@@ -1,3 +1,4 @@
+#[derive(Clone, Copy)]
 pub struct Pixel {
     r: u8,
     g: u8,
@@ -26,7 +27,14 @@ pub struct Image<'a> {
     width: usize
 }
 
-impl Image<'_> {
+impl<'a> Image<'a> {
+    pub fn new(pixels: &'a [Pixel], height: usize, width: usize) -> Self {
+        debug_assert!(pixels.len() == height * width, "incorrect pixel length");
+
+        Self {
+            pixels, height, width
+        }
+    }
     pub fn get_pixels(&self) -> &'_ [Pixel] {
         self.pixels
     }
@@ -40,16 +48,6 @@ impl Image<'_> {
     }
 }
 
-impl<'a> Image<'a> {
-    pub fn new(pixels: &'a [Pixel], height: usize, width: usize) -> Self {
-        debug_assert!(pixels.len() == height * width, "incorrect pixel length");
-
-        Self {
-            pixels, height, width
-        }
-    }
-}
-
 pub trait Render<'a> {
-    fn image(&self) -> Image<'_>;
+    fn image(&self) -> &Image<'_>;
 }
