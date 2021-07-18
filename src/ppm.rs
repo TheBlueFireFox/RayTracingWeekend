@@ -21,12 +21,9 @@ pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), 
     // no error possible as per docs
     write!(s, "P3\n{} {}\n255\n", img.get_width(), img.get_height()).unwrap();
 
-    for j in (0..img.get_height()).rev() {
-        for i in 0..img.get_width() {
-            let p = img.get_pixels()[j * img.get_height() + i];
-            // no error possible as per docs
-            write!(s, "{} {} {}\n", p.r(), p.g(), p.b()).unwrap();
-        }
+    // no error possible as per docs
+    for p in img.get_pixels() {
+        write!(s, "{} {} {}\n", p.r(), p.g(), p.b()).unwrap();
     }
 
     // write file content
@@ -43,19 +40,19 @@ mod tests {
         ppm::save,
     };
 
-    struct Tmp<'a> {
-        img: Image<'a>,
+    struct Tmp<'a, 'b> {
+        img: &'b Image<'a>,
     }
 
-    impl<'a> Tmp<'a> {
-        fn new(img: Image<'a>) -> Self {
+    impl<'a, 'b> Tmp<'a, 'b> {
+        fn new(img: &'b Image<'a>) -> Self {
             Self { img }
         }
     }
 
-    impl<'a> crate::ppm::Render<'a> for Tmp<'a> {
+    impl<'a, 'b> crate::ppm::Render<'b> for Tmp<'a, 'b> {
         fn image(&self) -> &Image<'_> {
-            &self.img
+            self.img
         }
     }
 
@@ -72,10 +69,10 @@ mod tests {
 
         let con = |v| (255.999 * v) as u8;
 
-        for j in (0..IMAGE_HEIGHT).rev() {
+        for j in 0..IMAGE_HEIGHT {
             for i in 0..IMAGE_WIDTH {
                 let r = per(i, IMAGE_WIDTH);
-                let g = per(j, IMAGE_HEIGHT);
+                let g = per(255 - j, IMAGE_HEIGHT);
                 let b = 0.25;
 
                 let r = con(r);
@@ -87,8 +84,8 @@ mod tests {
                 px[j * IMAGE_HEIGHT + i] = Pixel::new(r, g, b);
             }
         }
-
-        let tmp = Tmp::new(Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH));
+        let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH);
+        let tmp = Tmp::new(&img);
 
         let tmp_file1 = tempfile::NamedTempFile::new()?;
         let mut tmp_file2 = tmp_file1.reopen()?;
