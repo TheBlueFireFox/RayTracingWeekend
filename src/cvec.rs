@@ -12,6 +12,14 @@ impl<T, const N: usize> CVec<T, N>
 where
     T: Copy,
 {
+    pub fn data(&self) -> &[T] {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut [T] {
+        &mut self.data
+    }
+
     pub fn size(&self) -> usize {
         N
     }
@@ -117,6 +125,27 @@ where
         next.into()
     }
 }
+
+macro_rules! Muls {
+    ($($e:ty),+) => {
+        $( impl<const N: usize> ops::Mul<CVec<$e, N>> for $e
+        {
+            type Output = CVec<$e, N>;
+
+            fn mul(self, rhs: CVec<$e, N>) -> Self::Output {
+                let mut next = [0 as $e; N];
+
+                for i in 0..rhs.data.len() {
+                    next[i] = rhs.data[i] * self;
+                }
+
+                next.into()
+            }
+        })+
+    };
+}
+
+Muls!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
 
 impl<T, const N: usize> ops::Div<T> for CVec<T, N>
 where
