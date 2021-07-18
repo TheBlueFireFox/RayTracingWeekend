@@ -1,6 +1,6 @@
 use std::{ops, usize};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CVec<T, const N: usize>
 where
     T: Copy,
@@ -20,8 +20,25 @@ where
         &mut self.data
     }
 
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         N
+    }
+}
+impl<T, const N: usize> CVec<T, N>
+where
+    T: ops::AddAssign
+        + ops::Mul<Output = T>
+        + From<f64>
+        + Into<f64>
+        + num_traits::Zero
+        + num_traits::One
+        + ops::Div<Output = T>
+        + ops::MulAssign<T>
+        + Copy,
+{
+    pub fn unit_vector(&self) -> Self {
+        let l = self.length();
+        *self / l
     }
 }
 
@@ -67,7 +84,7 @@ where
     fn add(self, rhs: Self) -> Self::Output {
         let mut next = [T::zero(); N];
 
-        for i in 0..self.data.len() {
+        for i in 0..self.len() {
             next[i] = self.data[i] + rhs.data[i];
         }
 
@@ -84,7 +101,7 @@ where
     fn sub(self, rhs: Self) -> Self::Output {
         let mut next = [T::zero(); N];
 
-        for i in 0..self.data.len() {
+        for i in 0..self.len() {
             next[i] = self.data[i] - rhs.data[i];
         }
 
@@ -101,7 +118,7 @@ where
     fn mul(self, rhs: Self) -> Self::Output {
         let mut next = [T::one(); N];
 
-        for i in 0..self.data.len() {
+        for i in 0..self.len() {
             next[i] = self.data[i] * rhs.data[i];
         }
 
@@ -118,7 +135,7 @@ where
     fn mul(self, rhs: T) -> Self::Output {
         let mut next = [T::one(); N];
 
-        for i in 0..self.data.len() {
+        for i in 0..self.len() {
             next[i] = self.data[i] * rhs;
         }
 
@@ -133,19 +150,13 @@ macro_rules! Muls {
             type Output = CVec<$e, N>;
 
             fn mul(self, rhs: CVec<$e, N>) -> Self::Output {
-                let mut next = [0 as $e; N];
-
-                for i in 0..rhs.data.len() {
-                    next[i] = rhs.data[i] * self;
-                }
-
-                next.into()
+                rhs * self
             }
         })+
     };
 }
 
-Muls!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
+Muls!(usize, isize, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
 
 impl<T, const N: usize> ops::Div<T> for CVec<T, N>
 where
@@ -163,7 +174,7 @@ where
     T: ops::AddAssign + Copy,
 {
     fn add_assign(&mut self, rhs: Self) {
-        for i in 0..self.data.len() {
+        for i in 0..self.len() {
             self.data[i] += rhs.data[i];
         }
     }
@@ -189,17 +200,16 @@ where
     }
 }
 
-pub fn dot<T, const N: usize>(l: CVec<T, N>, r: CVec<T, N>) -> CVec<T, N>
+pub fn dot<T, const N: usize>(l: CVec<T, N>, r: CVec<T, N>) -> T
 where
-    T: num_traits::Zero + ops::Mul<Output = T> + Copy,
+    T: num_traits::Zero + ops::Add<Output = T> + ops::Mul<Output = T> + Copy,
 {
-    let mut next = [T::zero(); N];
-
-    for i in 0..l.data.len() {
-        next[i] = l.data[i] * r.data[i];
+    let mut res = T::zero();
+    for i in 0..l.len() {
+        res = res + l.data[i] * r.data[i];
     }
 
-    next.into()
+    res
 }
 
 pub type Vec3<T> = CVec<T, 3>;
@@ -227,30 +237,162 @@ where
     }
 }
 
-pub fn cross<T>(l: Vec3<T>, r: Vec3<T>) -> Vec3<T>
+impl<T> Vec3<T>
 where
-    T: num_traits::Zero + ops::Mul<Output = T> + ops::Sub<Output = T> + Copy,
+    T: ops::Mul<Output = T> + ops::Sub<Output = T> + Copy,
 {
-    [
-        l.data[1] * r.data[2] - l.data[2] * r.data[1],
-        l.data[2] * r.data[0] - l.data[0] * r.data[2],
-        l.data[0] * r.data[1] - l.data[1] * r.data[0],
-    ]
-    .into()
+    pub fn cross(&self, rhs: &Self) -> Vec3<T> {
+        [
+            self.data[1] * rhs.data[2] - self.data[2] * rhs.data[1],
+            self.data[2] * rhs.data[0] - self.data[0] * rhs.data[2],
+            self.data[0] * rhs.data[1] - self.data[1] * rhs.data[0],
+        ]
+        .into()
+    }
 }
 
-pub fn unit_vector<T>(v: Vec3<T>) -> Vec3<T>
+pub fn cross<T>(l: &Vec3<T>, r: &Vec3<T>) -> Vec3<T>
 where
-    T: ops::AddAssign
-        + ops::Mul<Output = T>
-        + From<f64>
-        + Into<f64>
-        + num_traits::Zero
-        + num_traits::One
-        + ops::Div<Output = T>
-        + ops::MulAssign<T>
-        + Copy,
+    T: ops::Mul<Output = T> + ops::Sub<Output = T> + Copy,
 {
-    let l = v.length();
-    v / l
+    l.cross(r)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fmt::Write;
+
+    fn setup() -> (CVec<f64, 5>, CVec<f64, 5>) {
+        (
+            [0.1, 0.2, 0.3, 0.4, 0.5].into(),
+            [0.0, 0.1, 0.2, 0.3, 0.4].into(),
+        )
+    }
+
+    #[test]
+    fn test_into() {
+        let res = "CVec { data: [0.1, 0.2, 0.3, 0.4, 0.5] }";
+        let (v, _) = setup();
+        let mut s = String::new();
+        write!(&mut s, "{:?}", v).unwrap();
+
+        assert_eq!(res, s);
+    }
+
+    #[test]
+    fn test_size() {
+        let (v, _) = setup();
+        assert_eq!(v.len(), 5)
+    }
+
+    #[test]
+    fn test_lenght_squared() {
+        let (v, _) = setup();
+        let r = v.length_squared();
+        assert_eq!(0.55, r);
+    }
+
+    #[test]
+    fn test_lenght() {
+        let (v, _) = setup();
+        let r = v.length();
+        assert_eq!(0.55f64.sqrt(), r);
+    }
+
+    #[test]
+    fn test_add() {
+        let (v, l) = setup();
+        let r: CVec<f64, 5> = [0.1 + 0.0, 0.2 + 0.1, 0.3 + 0.2, 0.4 + 0.3, 0.5 + 0.4].into();
+        assert_eq!(v + l, r);
+    }
+
+    #[test]
+    fn test_sub() {
+        let (v, l) = setup();
+        let r: CVec<f64, 5> = [0.1 - 0.0, 0.2 - 0.1, 0.3 - 0.2, 0.4 - 0.3, 0.5 - 0.4].into();
+        assert_eq!(v - l, r);
+    }
+
+    #[test]
+    fn test_mul_self() {
+        let (v, l) = setup();
+        let r: CVec<f64, 5> = [0.1 * 0.0, 0.2 * 0.1, 0.3 * 0.2, 0.4 * 0.3, 0.5 * 0.4].into();
+
+        assert_eq!(v * l, r);
+    }
+
+    #[test]
+    fn test_mul_f64() {
+        let (v, _) = setup();
+        let l = 1.2;
+        let r: CVec<f64, 5> = [0.1 * l, 0.2 * l, 0.3 * l, 0.4 * l, 0.5 * l].into();
+
+        assert_eq!(v * l, r);
+    }
+
+    #[test]
+    fn test_div() {
+        let (v, _) = setup();
+        let ll = 1.2;
+        let l = 1.0 / ll;
+        let r: CVec<f64, 5> = [0.1 * l, 0.2 * l, 0.3 * l, 0.4 * l, 0.5 * l].into();
+
+        assert_eq!(v / ll, r);
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let (mut v, l) = setup();
+        let r: CVec<f64, 5> = [0.1 + 0.0, 0.2 + 0.1, 0.3 + 0.2, 0.4 + 0.3, 0.5 + 0.4].into();
+        v += l;
+        assert_eq!(v, r);
+    }
+
+    #[test]
+    fn test_mul_assign_f64() {
+        let (mut v, _) = setup();
+        let l = 1.2;
+        let r: CVec<f64, 5> = [0.1 * l, 0.2 * l, 0.3 * l, 0.4 * l, 0.5 * l].into();
+
+        v *= l;
+
+        assert_eq!(v, r);
+    }
+
+    #[test]
+    fn test_div_assign() {
+        let (mut v, _) = setup();
+        let ll = 1.2;
+        let l = 1.0 / ll;
+        let r: CVec<f64, 5> = [0.1 * l, 0.2 * l, 0.3 * l, 0.4 * l, 0.5 * l].into();
+
+        v /= ll;
+
+        assert_eq!(v, r);
+    }
+
+    #[test]
+    fn test_dot() {
+        let (v, l) = setup();
+        let r = 0.1 * 0.0 + 0.2 * 0.1 + 0.3 * 0.2 + 0.4 * 0.3 + 0.5 * 0.4;
+        assert_eq!(dot(v, l), r);
+    }
+
+    fn setup_vec3() -> (Vec3<f64>, Vec3<f64>) {
+        (Vec3::new(0.1, 0.2, 0.3), Vec3::new(0.0, 0.1, 0.2))
+    }
+
+    #[test]
+    fn test_cross() {
+        let (v, l) = setup_vec3();
+        let r: Vec3<f64> = [
+            0.2 * 0.2 - 0.3 * 0.1,
+            0.3 * 0.0 - 0.1 * 0.2,
+            0.1 * 0.1 - 0.2 * 0.0,
+        ]
+        .into();
+        assert_eq!(v.cross(&l), r);
+        assert_eq!(cross(&v, &l), r);
+    }
 }

@@ -29,6 +29,12 @@ impl<'a> Image<'a> {
     }
 }
 
+impl<'a> Render<'a> for Image<'a> {
+    fn image(&self) -> &Image<'_> {
+        self 
+    }
+}
+
 pub trait Render<'a> {
     fn image(&self) -> &Image<'_>;
 }
