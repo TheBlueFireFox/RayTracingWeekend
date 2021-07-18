@@ -1,41 +1,44 @@
 #[derive(Clone, Copy)]
-pub struct Pixel {
+pub struct Color {
     r: u8,
     g: u8,
     b: u8,
 }
 
-impl Pixel {
-    pub fn new(r: u8, g: u8, b: u8) -> Self {
+pub const BLACK : Color = Color::new(0,0,0);
+pub const WHITE : Color = Color::new(255,255,255);
+
+impl Color {
+    pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
 
-    pub fn r(&self) -> u8 {
+    pub const fn r(&self) -> u8 {
         self.r
     }
-    pub fn g(&self) -> u8 {
+    pub const fn g(&self) -> u8 {
         self.g
     }
-    pub fn b(&self) -> u8 {
+    pub const fn b(&self) -> u8 {
         self.b
     }
 }
 
 pub struct Image<'a> {
-    pixels: &'a [Pixel],
+    pixels: &'a [Color],
     height: usize,
     width: usize
 }
 
 impl<'a> Image<'a> {
-    pub fn new(pixels: &'a [Pixel], height: usize, width: usize) -> Self {
+    pub fn new(pixels: &'a [Color], height: usize, width: usize) -> Self {
         debug_assert!(pixels.len() == height * width, "incorrect pixel length");
 
         Self {
             pixels, height, width
         }
     }
-    pub fn get_pixels(&self) -> &'_ [Pixel] {
+    pub fn get_pixels(&self) -> &'_ [Color] {
         self.pixels
     }
 

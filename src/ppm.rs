@@ -36,7 +36,7 @@ mod tests {
     use tempfile;
 
     use crate::{
-        image::{Image, Pixel},
+        image::{Image, Color},
         ppm::save,
     };
 
@@ -61,7 +61,7 @@ mod tests {
         const IMAGE_WIDTH: usize = 256;
         const IMAGE_HEIGHT: usize = 256;
 
-        let mut px = vec![Pixel::new(0, 0, 0); IMAGE_HEIGHT * IMAGE_WIDTH];
+        let mut px = vec![Color::new(0, 0, 0); IMAGE_HEIGHT * IMAGE_WIDTH];
 
         let mut res = format!("P3\n{} {}\n255\n", IMAGE_WIDTH, IMAGE_HEIGHT);
 
@@ -81,7 +81,7 @@ mod tests {
 
                 res.push_str(&format!("{} {} {}\n", r, g, b));
 
-                px[j * IMAGE_HEIGHT + i] = Pixel::new(r, g, b);
+                px[j * IMAGE_HEIGHT + i] = Color::new(r, g, b);
             }
         }
         let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH);
