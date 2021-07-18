@@ -23,7 +23,7 @@ pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), 
 
     // no error possible as per docs
     for p in img.get_pixels() {
-        write!(s, "{} {} {}\n", p.r(), p.g(), p.b()).unwrap();
+        write!(s, "{} {} {}\n", p.x() as u8, p.y() as u8, p.z() as u8).unwrap();
     }
 
     // write file content
@@ -61,13 +61,14 @@ mod tests {
         const IMAGE_WIDTH: usize = 256;
         const IMAGE_HEIGHT: usize = 256;
 
-        let mut px = vec![Color::new(0, 0, 0); IMAGE_HEIGHT * IMAGE_WIDTH];
+        let mut px = vec![Color::new(0.0, 0.0, 0.0); IMAGE_HEIGHT * IMAGE_WIDTH];
 
         let mut res = format!("P3\n{} {}\n255\n", IMAGE_WIDTH, IMAGE_HEIGHT);
 
         let per = |v, c| ((v as f64) / ((c - 1) as f64));
 
-        let con = |v| (255.999 * v) as u8;
+        let rcon = |v| (255.999 * v);
+        let con = |v| rcon(v) as u8;
 
         for j in 0..IMAGE_HEIGHT {
             for i in 0..IMAGE_WIDTH {
@@ -75,13 +76,9 @@ mod tests {
                 let g = per(255 - j, IMAGE_HEIGHT);
                 let b = 0.25;
 
-                let r = con(r);
-                let g = con(g);
-                let b = con(b);
+                px[j * IMAGE_HEIGHT + i] = Color::new(rcon(r), rcon(g), rcon(b));
 
-                res.push_str(&format!("{} {} {}\n", r, g, b));
-
-                px[j * IMAGE_HEIGHT + i] = Color::new(r, g, b);
+                res.push_str(&format!("{} {} {}\n", con(r), con(g), con(b)));
             }
         }
         let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH);

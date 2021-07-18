@@ -1,28 +1,6 @@
-#[derive(Clone, Copy)]
-pub struct Color {
-    r: u8,
-    g: u8,
-    b: u8,
-}
+use crate::cvec;
 
-pub const BLACK : Color = Color::new(0,0,0);
-pub const WHITE : Color = Color::new(255,255,255);
-
-impl Color {
-    pub const fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
-    }
-
-    pub const fn r(&self) -> u8 {
-        self.r
-    }
-    pub const fn g(&self) -> u8 {
-        self.g
-    }
-    pub const fn b(&self) -> u8 {
-        self.b
-    }
-}
+pub type Color = cvec::Color<f64>;
 
 pub struct Image<'a> {
     pixels: &'a [Color],
