@@ -21,12 +21,14 @@ pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), 
     // no error possible as per docs
     write!(s, "P3\n{} {}\n255\n", img.get_width(), img.get_height()).unwrap();
 
-    // no error possible as per docs
     let calc = |v| (255.999 * v) as u8;
+
     for p in img.get_pixels() {
         let r = calc(p.x());
         let g = calc(p.y());
         let b = calc(p.z());
+
+        // no error possible as per docs
         write!(s, "{} {} {}\n", r, g, b).unwrap();
     }
 

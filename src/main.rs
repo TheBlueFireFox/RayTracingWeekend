@@ -12,7 +12,7 @@ mod ray;
 fn ray_color(r: Ray) -> Color {
     let unit_direction = r.direction().unit_vector();
     let t = 0.5 * (unit_direction.y() + 1.0);
-    (1.0 - t) * Color::new(0.0, 0.0, 0.0) + t * Color::new(0.5, 0.7, 1.0)
+    (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
 }
 
 fn main() {
@@ -44,8 +44,8 @@ fn main() {
     for j in (0..image_height).rev() {
         print!("\rScanlines remaining: {} ", j);
         for i in 0..image_width {
-            let u = calc(j, image_width);
-            let v = calc(i, image_height);
+            let v = calc(j, image_height);
+            let u = calc(i, image_width);
             let r = Ray::new(
                 origin,
                 lower_left_corner + u * horizontal + v * vertical - origin,
