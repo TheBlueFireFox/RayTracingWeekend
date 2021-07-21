@@ -1,15 +1,39 @@
-use cvec::Point;
+use cvec::{dot};
 use image::Color;
-use ray::{Ray, Vec3};
+use ray::{Ray, Point, Vec3};
 
 use crate::image::Image;
 
 mod cvec;
+mod hittable;
+mod sphere;
 mod image;
 mod ppm;
 mod ray;
 
-fn ray_color(r: Ray) -> Color {
+fn hit_sphere(center: &Point, radius : f64, r: &Ray) -> f64 {
+    let oc = r.origin() - *center;
+
+    let a = r.direction().length_squared();
+    let half_b = dot(oc, r.direction());
+    let c = oc.length_squared() - radius * radius;
+    let discriminant = half_b * half_b - a * c;
+
+    if discriminant < 0.0 {
+        -1.0
+    } else {
+        (-half_b - discriminant.sqrt()) / a
+    }
+}
+
+
+fn ray_color(r: &Ray) -> Color {
+    let t = hit_sphere(&Point::new(0.0,0.0,-1.0), 0.5, r);
+    if t > 0.0 {
+        let n = r.at(t) - Vec3::new(0.0, 0.0, -1.0).unit_vector();
+        return 0.5 * Color::new(n.x() + 1.0, n.y() + 1.0, n.z() + 1.0);
+    }
+
     let unit_direction = r.direction().unit_vector();
     let t = 0.5 * (unit_direction.y() + 1.0);
     (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
@@ -51,7 +75,7 @@ fn main() {
                 lower_left_corner + u * horizontal + v * vertical - origin,
             );
 
-            let pixel_color = ray_color(r);
+            let pixel_color = ray_color(&r);
 
             data.push(pixel_color);
         }
