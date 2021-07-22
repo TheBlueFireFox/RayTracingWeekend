@@ -1,9 +1,9 @@
 use crate::ray::{Point, Ray, Vec3};
 
-const ASPECT_RATIO: f64 = 16.0 / 9.0;
-const VIEWPORT_HEIGHT: f64 = 2.0;
-const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
-const FOCAL_LENGHT: f64 = 1.0;
+pub const ASPECT_RATIO: f64 = 16.0 / 9.0;
+pub const VIEWPORT_HEIGHT: f64 = 2.0;
+pub const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
+pub const FOCAL_LENGHT: f64 = 1.0;
 
 pub struct Camera {
     origin: Point,

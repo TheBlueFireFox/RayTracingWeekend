@@ -85,7 +85,7 @@ mod tests {
             }
         }
 
-        let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH);
+        let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH, 1);
 
         let tmp_file1 = tempfile::Builder::new().suffix(".ppm").tempfile()?;
         let mut tmp_file2 = tmp_file1.reopen()?;

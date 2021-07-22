@@ -40,17 +40,6 @@ fn main() {
     adder(Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0));
 
     // Camera
-    let viewport_height = 2.0;
-    let viewport_width = aspect_ratio * viewport_height;
-    let focal_lenght = 1.0;
-
-    let origin = Point::new(0.0, 0.0, 0.0);
-    let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, viewport_height, 0.0);
-    let lower_left_corner =
-        origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_lenght);
-    
-    // Camera
     let cam = Camera::new();
 
     // Render
@@ -65,7 +54,7 @@ fn main() {
         for i in 0..image_width {
 
             let mut pixel_color = Color::new(0.0,0.0,0.0);
-            for s in 0..samples_per_pixel {
+            for _ in 0..samples_per_pixel {
                 let u = calc(i, image_width);
                 let v = calc(j, image_height);
                 let r = cam.get_ray(u, v);
