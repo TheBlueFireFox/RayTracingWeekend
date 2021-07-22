@@ -1,4 +1,4 @@
-use crate::{cvec::dot, hittable::Hittable, ray::Point};
+use crate::{cvec::dot, hittable::{HitRecord, Hittable}, ray::{Point, Ray}};
 
 
 pub struct Sphere {
@@ -7,7 +7,7 @@ pub struct Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&mut self, r: &crate::ray::Ray, t_min: f64, t_max : f64, rec: &mut crate::hittable::HitRecord) -> bool {
+    fn hit(&mut self, r: &Ray, t_min: f64, t_max : f64, rec: &mut HitRecord) -> bool {
         let oc = r.origin() - self.center;
         let a = r.direction().length_squared();
         let half_b = dot(oc, r.direction());
@@ -30,7 +30,9 @@ impl Hittable for Sphere {
         }
         rec.t = root;
         rec.p = r.at(rec.t);
-        rec.normal = (rec.p - self.center) / (self.radius);
+        let outward_normal = (rec.p -self.center) / self.radius;
+        rec.set_face_normal(r, &outward_normal);
+
 
         true
     }
