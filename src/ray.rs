@@ -1,4 +1,3 @@
-
 pub type Point = crate::cvec::Point<f64>;
 pub type Vec3 = crate::cvec::Vec3<f64>;
 
@@ -20,7 +19,7 @@ impl Ray {
         self.dir
     }
 
-    pub fn at(&self, t : f64) -> Point {
+    pub fn at(&self, t: f64) -> Point {
         self.orig + t * self.dir
     }
 }

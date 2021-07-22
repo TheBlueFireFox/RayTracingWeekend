@@ -9,12 +9,12 @@ where
 }
 
 impl<T, const N: usize> Default for CVec<T, N>
-where 
-T: Default + Copy
+where
+    T: Default + Copy,
 {
     fn default() -> Self {
         Self {
-            data: [Default::default(); N]
+            data: [Default::default(); N],
         }
     }
 }
@@ -45,7 +45,8 @@ where
         + num_traits::One
         + ops::Div<Output = T>
         + ops::MulAssign<T>
-        + Copy + Default,
+        + Copy
+        + Default,
 {
     pub fn unit_vector(&self) -> Self {
         let l = self.length();
@@ -64,7 +65,7 @@ where
 
 impl<T, const N: usize> CVec<T, N>
 where
-    T: ops::AddAssign + ops::Mul<Output = T> + num_traits::Zero +  Default + Copy,
+    T: ops::AddAssign + ops::Mul<Output = T> + num_traits::Zero + Default + Copy,
 {
     pub fn length_squared(&self) -> T {
         let mut res = T::zero();
@@ -77,7 +78,13 @@ where
 
 impl<T, const N: usize> CVec<T, N>
 where
-    T: ops::AddAssign + ops::Mul<Output = T> + From<f64> + Into<f64> + num_traits::Zero + Default + Copy,
+    T: ops::AddAssign
+        + ops::Mul<Output = T>
+        + From<f64>
+        + Into<f64>
+        + num_traits::Zero
+        + Default
+        + Copy,
 {
     pub fn length(&self) -> T {
         let l: f64 = self.length_squared().into();
@@ -252,7 +259,7 @@ where
 
 impl<T> Vec3<T>
 where
-    T: ops::Mul<Output = T> + ops::Sub<Output = T> + Default +  Copy,
+    T: ops::Mul<Output = T> + ops::Sub<Output = T> + Default + Copy,
 {
     pub fn cross(&self, rhs: &Self) -> Vec3<T> {
         [

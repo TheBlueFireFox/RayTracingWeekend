@@ -1,39 +1,25 @@
-use cvec::{dot};
+use std::{cell::RefCell, rc::Rc};
+
 use image::Color;
-use ray::{Ray, Point, Vec3};
+use rand::random;
+use ray::{Point, Ray, Vec3};
 
-use crate::image::Image;
+use crate::{camera::Camera, image::Image, sphere::Sphere};
 
+mod camera;
 mod cvec;
 mod hittable;
-mod sphere;
 mod image;
 mod ppm;
 mod ray;
+mod rtweekend;
+mod sphere;
 
-fn hit_sphere(center: &Point, radius : f64, r: &Ray) -> f64 {
-    let oc = r.origin() - *center;
-
-    let a = r.direction().length_squared();
-    let half_b = dot(oc, r.direction());
-    let c = oc.length_squared() - radius * radius;
-    let discriminant = half_b * half_b - a * c;
-
-    if discriminant < 0.0 {
-        -1.0
-    } else {
-        (-half_b - discriminant.sqrt()) / a
+fn ray_color<H: hittable::Hittable>(r: &Ray, world: &mut H) -> Color {
+    let mut rec = Default::default();
+    if world.hit(r, 0.0, f64::INFINITY, &mut rec) {
+        return 0.5 * (rec.normal + Color::new(1.0, 1.0, 1.0));
     }
-}
-
-
-fn ray_color(r: &Ray) -> Color {
-    let t = hit_sphere(&Point::new(0.0,0.0,-1.0), 0.5, r);
-    if t > 0.0 {
-        let n = r.at(t) - Vec3::new(0.0, 0.0, -1.0).unit_vector();
-        return 0.5 * Color::new(n.x() + 1.0, n.y() + 1.0, n.z() + 1.0);
-    }
-
     let unit_direction = r.direction().unit_vector();
     let t = 0.5 * (unit_direction.y() + 1.0);
     (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
@@ -46,6 +32,12 @@ fn main() {
     let aspect_ratio = 16.0 / 9.0;
     let image_width: usize = 400;
     let image_height = (image_width as f64 / aspect_ratio) as usize;
+    let samples_per_pixel = 100;
+
+    let mut world = hittable::HittableList::new();
+    let mut adder = |v| world.add(Rc::new(RefCell::new(v)));
+    adder(Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5));
+    adder(Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0));
 
     // Camera
     let viewport_height = 2.0;
@@ -57,31 +49,34 @@ fn main() {
     let vertical = Vec3::new(0.0, viewport_height, 0.0);
     let lower_left_corner =
         origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_lenght);
+    
+    // Camera
+    let cam = Camera::new();
 
     // Render
     let mut data = Vec::with_capacity(image_height * image_width);
 
     println!("Running");
 
-    let calc = |o, l| (o as f64) / (l - 1) as f64;
+    let calc = |o, l| ((o as f64) + rand::random::<f64>()) / (l - 1) as f64;
 
     for j in (0..image_height).rev() {
         print!("\rScanlines remaining: {} ", j);
         for i in 0..image_width {
-            let v = calc(j, image_height);
-            let u = calc(i, image_width);
-            let r = Ray::new(
-                origin,
-                lower_left_corner + u * horizontal + v * vertical - origin,
-            );
 
-            let pixel_color = ray_color(&r);
+            let mut pixel_color = Color::new(0.0,0.0,0.0);
+            for s in 0..samples_per_pixel {
+                let u = calc(i, image_width);
+                let v = calc(j, image_height);
+                let r = cam.get_ray(u, v);
+                pixel_color += ray_color(&r, &mut world);
+            }
 
             data.push(pixel_color);
         }
     }
 
-    let img = Image::new(&data, image_height, image_width);
+    let img = Image::new(&data, image_height, image_width,samples_per_pixel);
 
     ppm::save(img, path).expect("Something went terribly wrong here");
 

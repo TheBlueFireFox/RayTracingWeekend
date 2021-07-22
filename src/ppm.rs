@@ -1,4 +1,4 @@
-use crate::image::Render;
+use crate::{image::Render, rtweekend::clamp};
 use std::{fmt::Write, fs, io, path::Path};
 
 pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), io::Error> {
@@ -21,7 +21,8 @@ pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), 
     // no error possible as per docs
     write!(s, "P3\n{} {}\n255\n", img.get_width(), img.get_height()).unwrap();
 
-    let calc = |v| (255.999 * v) as u8;
+    let scale = 1.0 / (img.sample() as f64);
+    let calc = |v| (255.999 * clamp(scale * v, 0.0, 0.999)) as u8;
 
     for p in img.get_pixels() {
         let r = calc(p.x());
