@@ -6,7 +6,7 @@ pub struct Image<'a> {
     pixels: &'a [Color],
     height: usize,
     width: usize,
-    sample: usize
+    sample: usize,
 }
 
 impl<'a> Image<'a> {
@@ -17,7 +17,7 @@ impl<'a> Image<'a> {
             pixels,
             height,
             width,
-            sample
+            sample,
         }
     }
     pub fn get_pixels(&self) -> &'_ [Color] {

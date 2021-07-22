@@ -1,6 +1,6 @@
 use std::{ops, usize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CVec<T, const N: usize>
 where
     T: Copy + Default,

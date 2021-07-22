@@ -1,21 +1,16 @@
 use std::{cell::RefCell, rc::Rc};
 
-use image::Color;
-use rand::random;
-use ray::{Point, Ray, Vec3};
+use ray_tracing::{
+    camera::Camera,
+    hittable::{self, Hittable},
+    image::Color,
+    image::Image,
+    ray::{Point, Ray, Vec3},
+    sphere::Sphere,
+    ppm,
+};
 
-use crate::{camera::Camera, image::Image, sphere::Sphere};
-
-mod camera;
-mod cvec;
-mod hittable;
-mod image;
-mod ppm;
-mod ray;
-mod rtweekend;
-mod sphere;
-
-fn ray_color<H: hittable::Hittable>(r: &Ray, world: &mut H) -> Color {
+fn ray_color<H: Hittable>(r: &Ray, world: &mut H) -> Color {
     let mut rec = Default::default();
     if world.hit(r, 0.0, f64::INFINITY, &mut rec) {
         return 0.5 * (rec.normal + Color::new(1.0, 1.0, 1.0));
@@ -47,13 +42,12 @@ fn main() {
 
     println!("Running");
 
-    let calc = |o, l| ((o as f64) + rand::random::<f64>()) / (l - 1) as f64;
+    let calc = |o, l| ((o as f64) + ray_tracing::random::<f64>()) / (l - 1) as f64;
 
     for j in (0..image_height).rev() {
         print!("\rScanlines remaining: {} ", j);
         for i in 0..image_width {
-
-            let mut pixel_color = Color::new(0.0,0.0,0.0);
+            let mut pixel_color = Color::new(0.0, 0.0, 0.0);
             for _ in 0..samples_per_pixel {
                 let u = calc(i, image_width);
                 let v = calc(j, image_height);
@@ -65,7 +59,7 @@ fn main() {
         }
     }
 
-    let img = Image::new(&data, image_height, image_width,samples_per_pixel);
+    let img = Image::new(&data, image_height, image_width, samples_per_pixel);
 
     ppm::save(img, path).expect("Something went terribly wrong here");
 
