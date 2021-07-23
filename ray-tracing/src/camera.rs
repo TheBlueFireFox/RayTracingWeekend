@@ -1,8 +1,5 @@
-use crate::ray::{Point, Ray, Vec3};
+use crate::{degrees_to_radians, ray::{Point, Ray, Vec3}};
 
-pub const ASPECT_RATIO: f64 = 16.0 / 9.0;
-pub const VIEWPORT_HEIGHT: f64 = 2.0;
-pub const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
 pub const FOCAL_LENGTH: f64 = 1.0;
 
 pub struct Camera {
@@ -13,10 +10,16 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new() -> Self {
+    pub fn new(vfov: f64, aspect_ratio: f64) -> Self {
+
+        let theta = degrees_to_radians(vfov);
+        let h = (theta/2.0).tan();
+        let viewport_height = 2.0 * h;
+        let viewport_width = aspect_ratio * viewport_height;
+
         let origin = Point::new(0.0, 0.0, 0.0);
-        let horizontal = Vec3::new(VIEWPORT_WIDTH, 0.0, 0.0);
-        let vertical = Vec3::new(0.0, VIEWPORT_HEIGHT, 0.0);
+        let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
+        let vertical = Vec3::new(0.0, viewport_height, 0.0);
         let lower_left_corner =
             origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, FOCAL_LENGTH);
 
