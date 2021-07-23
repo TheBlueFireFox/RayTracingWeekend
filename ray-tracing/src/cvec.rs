@@ -1,4 +1,13 @@
-use std::{ops, usize};
+use std::{
+    ops::{self, Neg},
+    usize,
+};
+
+use rand::{
+    distributions::{uniform::SampleUniform, Standard},
+    prelude::Distribution,
+    Rng,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CVec<T, const N: usize>
@@ -37,16 +46,48 @@ where
 }
 impl<T, const N: usize> CVec<T, N>
 where
-    T: ops::AddAssign
-        + ops::Mul<Output = T>
-        + From<f64>
-        + Into<f64>
-        + num_traits::Zero
-        + num_traits::One
-        + ops::Div<Output = T>
-        + ops::MulAssign<T>
-        + Copy
-        + Default,
+    T: num_traits::Zero + Default + Copy,
+    Standard: Distribution<T>,
+{
+    pub fn random() -> Self {
+        let mut data = [T::zero(); N];
+
+        for entry in data.as_mut() {
+            *entry = rand::random();
+        }
+
+        data.into()
+    }
+}
+
+impl<T, const N: usize> CVec<T, N>
+where
+    T: num_traits::NumRef + Neg<Output = T> + std::cmp::PartialOrd + SampleUniform + Default + Copy,
+{
+    pub fn random_range(min: T, max: T) -> Self {
+        let mut rng = rand::thread_rng();
+        let mut data = [T::one(); N];
+
+        for entry in data.as_mut() {
+            *entry = rng.gen_range(min..max);
+        }
+
+        Self { data }
+    }
+
+    pub fn random_in_unit_sphere() -> Self {
+        loop {
+            let p = Self::random_range(-T::one(), T::one());
+            if p.length_squared() < T::one() {
+                return p;
+            }
+        }
+    }
+}
+
+impl<T, const N: usize> CVec<T, N>
+where
+    T: num_traits::NumRef + From<f64> + Into<f64> + Copy + Default,
 {
     pub fn unit_vector(&self) -> Self {
         let l = self.length();
@@ -54,6 +95,30 @@ where
     }
 }
 
+impl<T, const N: usize> CVec<T, N>
+where
+    T: num_traits::NumRef
+        + Neg<Output = T>
+        + std::cmp::PartialOrd
+        + From<f64>
+        + Into<f64>
+        + SampleUniform
+        + Default
+        + Copy,
+{
+    pub fn random_unit_vector() -> Self {
+        Self::random_in_unit_sphere().unit_vector()
+    }
+
+    pub fn random_in_hemisphere(&self) -> Self {
+        let in_unit = Self::random_in_unit_sphere();
+        if dot(in_unit, *self) > T::zero() {
+            in_unit
+        } else {
+            in_unit * -T::one()
+        }
+    }
+}
 impl<T, const N: usize> From<[T; N]> for CVec<T, N>
 where
     T: Copy + Default,
@@ -65,12 +130,12 @@ where
 
 impl<T, const N: usize> CVec<T, N>
 where
-    T: ops::AddAssign + ops::Mul<Output = T> + num_traits::Zero + Default + Copy,
+    T: num_traits::NumRef + Default + Copy,
 {
     pub fn length_squared(&self) -> T {
         let mut res = T::zero();
         for val in self.data {
-            res += val * val;
+            res = res + val * val;
         }
         res
     }
@@ -78,13 +143,7 @@ where
 
 impl<T, const N: usize> CVec<T, N>
 where
-    T: ops::AddAssign
-        + ops::Mul<Output = T>
-        + From<f64>
-        + Into<f64>
-        + num_traits::Zero
-        + Default
-        + Copy,
+    T: num_traits::NumRef + From<f64> + Into<f64> + Default + Copy,
 {
     pub fn length(&self) -> T {
         let l: f64 = self.length_squared().into();
@@ -95,7 +154,7 @@ where
 
 impl<T, const N: usize> ops::Add for CVec<T, N>
 where
-    T: num_traits::Zero + ops::Add<Output = T> + Copy + Default,
+    T: num_traits::NumRef + Copy + Default,
 {
     type Output = Self;
 
@@ -112,7 +171,7 @@ where
 
 impl<T, const N: usize> ops::Sub for CVec<T, N>
 where
-    T: num_traits::Zero + ops::Sub<Output = T> + Default + Copy,
+    T: num_traits::NumRef + Default + Copy,
 {
     type Output = Self;
 
@@ -129,7 +188,7 @@ where
 
 impl<T, const N: usize> ops::Mul<Self> for CVec<T, N>
 where
-    T: num_traits::One + ops::Mul<T> + Default + Copy,
+    T: num_traits::NumRef + Default + Copy,
 {
     type Output = Self;
 
@@ -146,7 +205,7 @@ where
 
 impl<T, const N: usize> ops::Mul<T> for CVec<T, N>
 where
-    T: num_traits::One + ops::Mul<T> + Default + Copy,
+    T: num_traits::NumRef + Default + Copy,
 {
     type Output = Self;
 
@@ -180,7 +239,7 @@ Muls!(usize, isize, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
 
 impl<T, const N: usize> ops::Div<T> for CVec<T, N>
 where
-    T: num_traits::One + ops::Mul<T> + ops::Div<T, Output = T> + Default + Copy,
+    T: num_traits::NumRef + Default + Copy,
 {
     type Output = Self;
 
@@ -213,7 +272,7 @@ where
 
 impl<T, const N: usize> ops::DivAssign<T> for CVec<T, N>
 where
-    T: num_traits::One + ops::Div<Output = T> + ops::MulAssign<T> + Default + Copy,
+    T: num_traits::NumAssignRef + Default + Copy,
 {
     fn div_assign(&mut self, rhs: T) {
         *self *= T::one() / rhs;
@@ -222,7 +281,7 @@ where
 
 pub fn dot<T, const N: usize>(l: CVec<T, N>, r: CVec<T, N>) -> T
 where
-    T: num_traits::Zero + ops::Add<Output = T> + ops::Mul<Output = T> + Default + Copy,
+    T: num_traits::NumRef + Default + Copy,
 {
     let mut res = T::zero();
     for i in 0..l.len() {
@@ -259,7 +318,7 @@ where
 
 impl<T> Vec3<T>
 where
-    T: ops::Mul<Output = T> + ops::Sub<Output = T> + Default + Copy,
+    T: num_traits::NumAssignRef + Default + Copy,
 {
     pub fn cross(&self, rhs: &Self) -> Vec3<T> {
         [
@@ -273,7 +332,7 @@ where
 
 pub fn cross<T>(l: &Vec3<T>, r: &Vec3<T>) -> Vec3<T>
 where
-    T: ops::Mul<Output = T> + ops::Sub<Output = T> + Default + Copy,
+    T: num_traits::NumAssignRef + Default + Copy,
 {
     l.cross(r)
 }

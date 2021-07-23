@@ -3,7 +3,7 @@ use crate::ray::{Point, Ray, Vec3};
 pub const ASPECT_RATIO: f64 = 16.0 / 9.0;
 pub const VIEWPORT_HEIGHT: f64 = 2.0;
 pub const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
-pub const FOCAL_LENGHT: f64 = 1.0;
+pub const FOCAL_LENGTH: f64 = 1.0;
 
 pub struct Camera {
     origin: Point,
@@ -18,7 +18,7 @@ impl Camera {
         let horizontal = Vec3::new(VIEWPORT_WIDTH, 0.0, 0.0);
         let vertical = Vec3::new(0.0, VIEWPORT_HEIGHT, 0.0);
         let lower_left_corner =
-            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, FOCAL_LENGHT);
+            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, FOCAL_LENGTH);
 
         Self {
             origin,

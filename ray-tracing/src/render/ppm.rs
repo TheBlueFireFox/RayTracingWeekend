@@ -1,4 +1,6 @@
-use crate::{image::Render, rtweekend::clamp};
+use num_traits::Pow;
+
+use crate::{render::Render, rtweekend::clamp};
 use std::{fmt::Write, fs, io, path::Path};
 
 pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), io::Error> {
@@ -22,7 +24,11 @@ pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), 
     write!(s, "P3\n{} {}\n255\n", img.get_width(), img.get_height()).unwrap();
 
     let scale = 1.0 / (img.sample() as f64);
-    let calc = |v| (255.999 * clamp(scale * v, 0.0, 0.999)) as u8;
+    let calc = |v: f64| {
+        let v = (scale * v).pow(1.0 / img.gamma());
+        let c = clamp(v, 0.0, 0.999);
+        (256.0 * c) as u8
+    };
 
     for p in img.get_pixels() {
         let r = calc(p.x());
@@ -30,7 +36,7 @@ pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), 
         let b = calc(p.z());
 
         // no error possible as per docs
-        write!(s, "{} {} {}\n", r, g, b).unwrap();
+        let _ = write!(s, "{} {} {}\n", r, g, b);
     }
 
     let path = path.as_ref().to_string_lossy();
@@ -54,10 +60,7 @@ mod tests {
     };
     use tempfile;
 
-    use crate::{
-        image::{Color, Image},
-        ppm::save,
-    };
+    use crate::render::{ppm::save, Color, Image};
 
     #[test]
     fn test_rainbow() -> Result<(), io::Error> {
@@ -85,7 +88,7 @@ mod tests {
             }
         }
 
-        let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH, 1);
+        let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH, 1, 1.0);
 
         let tmp_file1 = tempfile::Builder::new().suffix(".ppm").tempfile()?;
         let mut tmp_file2 = tmp_file1.reopen()?;

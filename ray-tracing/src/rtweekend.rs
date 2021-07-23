@@ -1,3 +1,7 @@
+use rand::{
+    distributions::uniform::{SampleRange, SampleUniform},
+    Rng,
+};
 use std::f64::consts::PI;
 
 #[inline]
@@ -9,28 +13,19 @@ pub fn degrees_to_radians(deg: f64) -> f64 {
 #[inline]
 pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
     match x {
-        x if x < min => min,
-        x if x > max => max,
+        i if i < min => min,
+        i if i > max => max,
         _ => x,
     }
 }
 
 // Reexporting from random (because reasons)
 pub use rand::random;
-use rand::{
-    distributions::{
-        uniform::{SampleRange, SampleUniform},
-        Standard,
-    },
-    prelude::Distribution,
-    Rng,
-};
 
 pub fn rand_range<T, R>(range: R) -> T
 where
     T: SampleUniform,
     R: SampleRange<T>,
 {
-    let mut rng = rand::thread_rng();
-    rng.gen_range(range)
+    rand::thread_rng().gen_range(range)
 }
