@@ -1,4 +1,6 @@
-use crate::{cvec::{self, dot, reflect, refract}, hittable::HitRecord, ray::{Ray, Vec3}, render::Color};
+use num_traits::Pow;
+
+use crate::{cvec::{self, dot, reflect, refract}, hittable::HitRecord, ray::{Ray, Vec3}, render::Color, rtweekend};
 
 pub trait Material {
     fn scatter(
@@ -73,6 +75,13 @@ impl Dielectric {
     pub fn new(ir: f64) -> Self {
         Self { ir }
     }
+
+    fn reflectance(cosine : f64, ref_idx: f64) -> f64 {
+        // Use Schlick's approximation for reflextance.
+        let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+        let r0 = r0 * r0;
+        r0 + (1.0 - r0) * (1.0-cosine).pow(5.0)
+    }
 }
 
 impl Material for Dielectric {
@@ -96,7 +105,7 @@ impl Material for Dielectric {
 
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
 
-        let direction = if cannot_refract {
+        let direction = if cannot_refract || Self::reflectance(cos_theta, refraction_ratio) > rtweekend::random() {
             reflect(unit_direction, rec.normal)
         } else {
             refract(unit_direction, rec.normal, refraction_ratio)

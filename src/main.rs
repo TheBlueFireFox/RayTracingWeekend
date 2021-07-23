@@ -3,9 +3,9 @@ use progressing::{
     // The underlying Trait
     Baring,
 };
-use std::{cell::RefCell, f64::consts::PI, io::{self, Write}, rc::Rc};
+use std::{cell::RefCell, io::{self, Write}, rc::Rc};
 
-use ray_tracing::{camera::Camera, hittable::{Hittable, HittableList}, material::{Dielectric, Lambartian, Metal}, ray::{Point, Ray, Vec3}, render::Color, render::Image, render::ppm, sphere::Sphere};
+use ray_tracing::{camera::Camera, hittable::{Hittable, HittableList}, material::{Dielectric, Lambartian, Material, Metal}, ray::{Point, Ray, Vec3}, render::Color, render::Image, render::ppm, sphere::Sphere};
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
@@ -59,48 +59,55 @@ fn main() {
 
     // World
 
-    let r= (PI / 4.0).cos();
     let mut world = HittableList::new();
 
     let make_lam = |(x, y, z)| Rc::new(RefCell::new(Lambartian::new(Color::new(x, y, z))));
     let make_met = |(x, y, z), f| Rc::new(RefCell::new(Metal::new(Color::new(x, y, z), f)));
     let make_diel = |x| Rc::new(RefCell::new(Dielectric::new(x)));
 
-    let material_left = make_lam((0.0,0.0,0.1));    
-    let material_right = make_lam((1.0,0.0,0.0));
+  // let r= (PI / 4.0).cos();
+  //  let material_left = make_lam((0.0,0.0,0.1));    
+  //  let material_right = make_lam((1.0,0.0,0.0));
+  //  for sp in [
+  //      ((-r, 0.0,-1.0), r, material_left),
+  //      ((r, 0.0,-1.0), r, material_right),
+  //  ] {
+  //      let sphere = Sphere::new(Point::new(sp.0 .0, sp.0 .1, sp.0 .2), sp.1, sp.2);
+  //      world.add(Rc::new(RefCell::new(sphere)));
+  //  }
+
+    let material_ground: Rc<RefCell<dyn Material>> = make_lam((0.8, 0.8, 0.0));
+    let material_center = make_lam((0.1,0.2,0.5));
+    let material_left = make_diel(1.5);
+    let material_right = make_met((0.8, 0.6, 0.2), 0.0);
+
     for sp in [
-        ((-r, 0.0,-1.0), r, material_left),
-        ((r, 0.0,-1.0), r, material_right),
+        ((0.0, -100.5, -1.0), 100.0, material_ground.clone()),
+        ((0.0, 0.0, -1.0), 0.5, material_center.clone()),
+        ((-1.0, 0.0, -1.0), 0.5, material_left.clone()),
+        ((-1.0, 0.0, -1.0), -0.45, material_left.clone()),
+        ((1.0, 0.0, -1.0), 0.5, material_right.clone()),
     ] {
         let sphere = Sphere::new(Point::new(sp.0 .0, sp.0 .1, sp.0 .2), sp.1, sp.2);
         world.add(Rc::new(RefCell::new(sphere)));
     }
-//    let material_ground: Rc<RefCell<dyn Material>> = make_lam((0.8, 0.8, 0.0));
-//    let material_center = make_lam((0.1,0.2,0.5));
-//    let material_left = make_diel(1.5);
-//    let material_right = make_met((0.8, 0.6, 0.2), 0.0);
-//
-//    for sp in [
-//        ((0.0, -100.5, -1.0), 100.0, material_ground.clone()),
-//        ((0.0, 0.0, -1.0), 0.5, material_center.clone()),
-//        ((-1.0, 0.0, -1.0), 0.5, material_left.clone()),
-//        ((-1.0, 0.0, -1.0), -0.4, material_left.clone()),
-//        ((1.0, 0.0, -1.0), 0.5, material_right.clone()),
-//    ] {
-//        let sphere = Sphere::new(Point::new(sp.0 .0, sp.0 .1, sp.0 .2), sp.1, sp.2);
-//        world.add(Rc::new(RefCell::new(sphere)));
-//    }
 
     // Diffuser
     let diff = Diffuse::Lambertian;
+
+    // Camera
+    let cam = Camera::new(
+        Point::new(-2.0, 2.0, 1.0),
+        Point::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0,1.0, 0.0),
+        20.0, 
+        aspect_ratio
+    );
 
     // progress bar
     let mut bar = MappingBar::with_range(0, image_height).timed();
     bar.set_len(20);
     bar.set(0usize);
-
-    // Camera
-    let cam = Camera::new(90.0, aspect_ratio);
 
     // Render
     let mut data = Vec::with_capacity(image_height * image_width);
@@ -113,6 +120,7 @@ fn main() {
         bar.set(image_height - j);
         print!("\r{} ", bar);
         let _ = io::stdout().flush();
+
         for i in 0..image_width {
             let mut pixel_color = Color::new(0.0, 0.0, 0.0);
 
