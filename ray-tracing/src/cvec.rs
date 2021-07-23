@@ -216,6 +216,17 @@ where
     }
 }
 
+impl<T, const N: usize> ops::Neg for CVec<T, N>
+where
+    T: num_traits::NumRef + Neg<Output = T> + Default + Copy,
+{
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        self * -T::one()
+    }
+}
+
 impl<T, const N: usize> ops::Mul<Self> for CVec<T, N>
 where
     T: num_traits::NumRef + Default + Copy,
@@ -326,6 +337,35 @@ where
     T: num_traits::NumRef + From<f64> + Default + Copy,
 {
     v - n * T::from(2.0) * dot(v, n)
+}
+
+pub fn refract<T, const N: usize>(uv: CVec<T, N>, n: CVec<T, N>, etai_over_etat: f64) -> CVec<T, N>
+where
+    T: num_traits::NumRef
+        + From<f64>
+        + ops::Mul<CVec<T, N>, Output = CVec<T, N>>
+        + PartialOrd
+        + Into<f64>
+        + Neg<Output = T>
+        + Default
+        + Copy,
+    f64: Into<T>,
+{
+    let cos_theta = dot(-uv, n);
+
+    let cos_theta = if cos_theta < T::one() {
+        cos_theta
+    } else {
+        T::one()
+    };
+
+    let r_out_perp = etai_over_etat.into() * (uv + cos_theta * n);
+    let mut t: f64 = (T::one() - r_out_perp.length_squared()).into();
+    t = -(t.abs().sqrt());
+    let t: T = t.into();
+    let r_out_parallel = t * n;
+
+    r_out_perp + r_out_parallel
 }
 
 pub type Vec3<T> = CVec<T, 3>;
