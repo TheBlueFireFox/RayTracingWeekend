@@ -2,13 +2,15 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     cvec::dot,
+    material::Material,
     ray::{Point, Ray, Vec3},
 };
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Default)]
 pub struct HitRecord {
     pub p: Point,
     pub normal: Vec3,
+    pub mat: Option<Rc<RefCell<dyn Material>>>,
     pub t: f64,
     pub front_face: bool,
 }
@@ -66,8 +68,8 @@ impl Hittable for HittableList {
                 .hit(r, t_min, closest_so_far, &mut temp_rec)
             {
                 hit_anything = true;
-                closest_so_far = temp_rec.t;
-                *rec = temp_rec;
+                closest_so_far = temp_rec.t.clone();
+                *rec = temp_rec.clone();
             }
         }
 

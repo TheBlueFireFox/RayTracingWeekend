@@ -62,7 +62,7 @@ where
 
 impl<T, const N: usize> CVec<T, N>
 where
-    T: num_traits::NumRef + Neg<Output = T> + std::cmp::PartialOrd + SampleUniform + Default + Copy,
+    T: num_traits::NumRef + Neg<Output = T> + PartialOrd + SampleUniform + Default + Copy,
 {
     pub fn random_range(min: T, max: T) -> Self {
         let mut rng = rand::thread_rng();
@@ -82,6 +82,36 @@ where
                 return p;
             }
         }
+    }
+}
+
+impl<T, const N: usize> CVec<T, N>
+where
+    T: num_traits::NumRef + Neg<Output = T> + PartialOrd + From<f64> + Default + Copy,
+{
+    pub fn near_zero(&self) -> bool {
+        const S: f64 = 1e-8;
+        let s: T = S.into();
+
+        let abs = |v: T| {
+            if v >= T::zero() {
+                v
+            } else {
+                -v
+            }
+        };
+
+        let mut res = true;
+
+        for d in self.data.iter() {
+            res &= abs(*d) < s;
+
+            if !res {
+                return res;
+            }
+        }
+
+        res
     }
 }
 
@@ -289,6 +319,13 @@ where
     }
 
     res
+}
+
+pub fn reflect<T, const N: usize>(v: CVec<T, N>, n: CVec<T, N>) -> CVec<T, N>
+where
+    T: num_traits::NumRef + From<f64> + Default + Copy,
+{
+    v - n * T::from(2.0) * dot(v, n)
 }
 
 pub type Vec3<T> = CVec<T, 3>;
