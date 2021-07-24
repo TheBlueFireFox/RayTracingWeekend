@@ -78,6 +78,7 @@ where
     pub fn random_in_unit_sphere() -> Self {
         loop {
             let p = Self::random_range(-T::one(), T::one());
+
             if p.length_squared() < T::one() {
                 return p;
             }
@@ -393,6 +394,21 @@ where
     }
 }
 
+impl<T> Vec3<T>
+where
+    T: num_traits::NumRef + Neg<Output = T> + PartialOrd + SampleUniform + Default + Copy,
+{
+    pub fn random_in_unit_disk() -> Self {
+        loop {
+            let mut p = Self::random_range(-T::one(), T::one());
+            p.data[2] = T::zero();
+
+            if p.length_squared() < T::one() {
+                return p;
+            }
+        }
+    }
+}
 impl<T> Vec3<T>
 where
     T: num_traits::NumAssignRef + Default + Copy,

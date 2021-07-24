@@ -3,9 +3,22 @@ use progressing::{
     // The underlying Trait
     Baring,
 };
-use std::{cell::RefCell, io::{self, Write}, rc::Rc};
+use std::{
+    cell::RefCell,
+    io::{self, Write},
+    rc::Rc,
+};
 
-use ray_tracing::{camera::Camera, hittable::{Hittable, HittableList}, material::{Dielectric, Lambartian, Material, Metal}, ray::{Point, Ray, Vec3}, render::Color, render::Image, render::ppm, sphere::Sphere};
+use ray_tracing::{
+    camera::Camera,
+    hittable::{Hittable, HittableList},
+    material::{Dielectric, Lambartian, Material, Metal},
+    ray::{Point, Ray, Vec3},
+    render::ppm,
+    render::Color,
+    render::Image,
+    sphere::Sphere,
+};
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
@@ -65,19 +78,19 @@ fn main() {
     let make_met = |(x, y, z), f| Rc::new(RefCell::new(Metal::new(Color::new(x, y, z), f)));
     let make_diel = |x| Rc::new(RefCell::new(Dielectric::new(x)));
 
-  // let r= (PI / 4.0).cos();
-  //  let material_left = make_lam((0.0,0.0,0.1));    
-  //  let material_right = make_lam((1.0,0.0,0.0));
-  //  for sp in [
-  //      ((-r, 0.0,-1.0), r, material_left),
-  //      ((r, 0.0,-1.0), r, material_right),
-  //  ] {
-  //      let sphere = Sphere::new(Point::new(sp.0 .0, sp.0 .1, sp.0 .2), sp.1, sp.2);
-  //      world.add(Rc::new(RefCell::new(sphere)));
-  //  }
+    // let r= (PI / 4.0).cos();
+    //  let material_left = make_lam((0.0,0.0,0.1));
+    //  let material_right = make_lam((1.0,0.0,0.0));
+    //  for sp in [
+    //      ((-r, 0.0,-1.0), r, material_left),
+    //      ((r, 0.0,-1.0), r, material_right),
+    //  ] {
+    //      let sphere = Sphere::new(Point::new(sp.0 .0, sp.0 .1, sp.0 .2), sp.1, sp.2);
+    //      world.add(Rc::new(RefCell::new(sphere)));
+    //  }
 
     let material_ground: Rc<RefCell<dyn Material>> = make_lam((0.8, 0.8, 0.0));
-    let material_center = make_lam((0.1,0.2,0.5));
+    let material_center = make_lam((0.1, 0.2, 0.5));
     let material_left = make_diel(1.5);
     let material_right = make_met((0.8, 0.6, 0.2), 0.0);
 
@@ -96,12 +109,20 @@ fn main() {
     let diff = Diffuse::Lambertian;
 
     // Camera
+    let lookfrom = Point::new(3.0, 3.0, 2.0);
+    let lookat = Point::new(0.0, 0.0, -1.0);
+    let vup = Point::new(0.0, 1.0, 0.0);
+    let dist_to_focus = (lookfrom - lookat).length();
+    let aperture = 2.0;
+
     let cam = Camera::new(
-        Point::new(-2.0, 2.0, 1.0),
-        Point::new(0.0, 0.0, -1.0),
-        Vec3::new(0.0,1.0, 0.0),
-        20.0, 
-        aspect_ratio
+        lookfrom,
+        lookat,
+        vup,
+        20.0,
+        aspect_ratio,
+        aperture,
+        dist_to_focus,
     );
 
     // progress bar
