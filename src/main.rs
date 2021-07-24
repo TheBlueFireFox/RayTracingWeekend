@@ -13,6 +13,7 @@ use ray_tracing::{
     camera::Camera,
     hittable::{Hittable, HittableList},
     material::{Dielectric, Lambartian, Material, Metal},
+    rand_range, random,
     ray::{Point, Ray, Vec3},
     render::ppm,
     render::Color,
@@ -20,14 +21,64 @@ use ray_tracing::{
     sphere::Sphere,
 };
 
-#[allow(dead_code)]
-#[derive(Clone, Copy)]
-enum Diffuse {
-    Lambertian,
-    UniformScatter,
+fn random_scene() -> HittableList {
+    let mut world = HittableList::new();
+    let mut adder = |(x, y, z), r, m| {
+        let sphere = Sphere::new(Point::new(x, y, z), r, m);
+        world.add(Rc::new(RefCell::new(sphere)));
+    };
+
+    let make_lam = |(x, y, z)| Rc::new(RefCell::new(Lambartian::new(Color::new(x, y, z))));
+    let make_met = |(x, y, z), f| Rc::new(RefCell::new(Metal::new(Color::new(x, y, z), f)));
+    let make_diel = |x| Rc::new(RefCell::new(Dielectric::new(x)));
+
+    let ground_material = make_lam((0.5, 0.5, 0.5));
+    adder((0.0, -1000.0, 0.0), 1000.0, ground_material);
+
+    let calc = |v| (v as f64) * 0.9 * random::<f64>();
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat: f64 = random();
+            let center = Point::new(calc(a), 0.2, calc(b));
+            let data = center.data();
+            if (center - Point::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let sphere_material: Rc<RefCell<dyn Material>> = if choose_mat < 0.8 {
+                    let albedo = Color::random() * Color::random();
+                    let data = albedo.data();
+                    make_lam((data[0], data[1], data[1]))
+                } else if choose_mat < 0.95 {
+                    let albedo = Color::random_range(0.5, 1.0);
+                    let fuzz = rand_range(0.0..0.5);
+                    let data = albedo.data();
+                    make_met((data[0], data[1], data[1]), fuzz)
+                } else {
+                    make_diel(1.5)
+                };
+                adder((data[0], data[1], data[1]), 0.2, sphere_material);
+            }
+        }
+    }
+
+    struct Mat {
+        p: (f64, f64, f64),
+        m: Rc<RefCell<dyn Material>>,
+    }
+
+    let new = |p, m| Mat { p, m };
+
+    for m in [
+        new((0.0, 1.0, 0.0), make_diel(1.5)),
+        new((-4.0, 1.0, 0.0), make_lam((0.4, 0.2, 0.1))),
+        new((4.0, 1.0, 0.0), make_met((0.7, 0.6, 0.5), 0.0)),
+    ] {
+        adder(m.p, 1.0, m.m.clone());
+    }
+
+    world
 }
 
-fn ray_color<H: Hittable>(r: &Ray, world: &mut H, depth: usize, dif: Diffuse) -> Color {
+fn ray_color<H: Hittable>(r: &Ray, world: &mut H, depth: usize) -> Color {
     if depth == 0 {
         return Color::new(0.0, 0.0, 0.0);
     }
@@ -42,17 +93,11 @@ fn ray_color<H: Hittable>(r: &Ray, world: &mut H, depth: usize, dif: Diffuse) ->
                 .borrow()
                 .scatter(r, &rec, &mut attenuation, &mut scattered)
             {
-                return attenuation * ray_color(&scattered, world, depth - 1, dif);
+                return attenuation * ray_color(&scattered, world, depth - 1);
             }
 
             return Color::new(0.0, 0.0, 0.0);
         }
-
-        // let target = match dif {
-        //     Diffuse::Lambertian => rec.p + rec.normal + Vec3::random_unit_vector(),
-        //     Diffuse::UniformScatter => rec.p + rec.normal.random_in_hemisphere(),
-        // };
-        // return 0.5 * ray_color(&Ray::new(rec.p, target - rec.p), world, depth - 1, dif);
     }
     let unit_direction = r.direction().unit_vector();
     let t = 0.5 * (unit_direction.y() + 1.0);
@@ -63,57 +108,23 @@ fn main() {
     // Image
     let path = "main";
 
-    let aspect_ratio = 16.0 / 9.0;
-    let image_width: usize = 400;
+    let aspect_ratio = 3.0 / 2.0;
+    let image_width: usize = 1200;
     let image_height = (image_width as f64 / aspect_ratio) as usize;
-    let samples_per_pixel = 100;
+    let samples_per_pixel = 500;
     let max_depth = 50;
     let gamma = 2.0;
 
     // World
 
-    let mut world = HittableList::new();
-
-    let make_lam = |(x, y, z)| Rc::new(RefCell::new(Lambartian::new(Color::new(x, y, z))));
-    let make_met = |(x, y, z), f| Rc::new(RefCell::new(Metal::new(Color::new(x, y, z), f)));
-    let make_diel = |x| Rc::new(RefCell::new(Dielectric::new(x)));
-
-    // let r= (PI / 4.0).cos();
-    //  let material_left = make_lam((0.0,0.0,0.1));
-    //  let material_right = make_lam((1.0,0.0,0.0));
-    //  for sp in [
-    //      ((-r, 0.0,-1.0), r, material_left),
-    //      ((r, 0.0,-1.0), r, material_right),
-    //  ] {
-    //      let sphere = Sphere::new(Point::new(sp.0 .0, sp.0 .1, sp.0 .2), sp.1, sp.2);
-    //      world.add(Rc::new(RefCell::new(sphere)));
-    //  }
-
-    let material_ground: Rc<RefCell<dyn Material>> = make_lam((0.8, 0.8, 0.0));
-    let material_center = make_lam((0.1, 0.2, 0.5));
-    let material_left = make_diel(1.5);
-    let material_right = make_met((0.8, 0.6, 0.2), 0.0);
-
-    for sp in [
-        ((0.0, -100.5, -1.0), 100.0, material_ground.clone()),
-        ((0.0, 0.0, -1.0), 0.5, material_center.clone()),
-        ((-1.0, 0.0, -1.0), 0.5, material_left.clone()),
-        ((-1.0, 0.0, -1.0), -0.45, material_left.clone()),
-        ((1.0, 0.0, -1.0), 0.5, material_right.clone()),
-    ] {
-        let sphere = Sphere::new(Point::new(sp.0 .0, sp.0 .1, sp.0 .2), sp.1, sp.2);
-        world.add(Rc::new(RefCell::new(sphere)));
-    }
-
-    // Diffuser
-    let diff = Diffuse::Lambertian;
+    let mut world = random_scene();
 
     // Camera
-    let lookfrom = Point::new(3.0, 3.0, 2.0);
-    let lookat = Point::new(0.0, 0.0, -1.0);
+    let lookfrom = Point::new(13.0, 2.0, 3.0);
+    let lookat = Point::new(0.0, 0.0, 0.0);
     let vup = Point::new(0.0, 1.0, 0.0);
-    let dist_to_focus = (lookfrom - lookat).length();
-    let aperture = 2.0;
+    let dist_to_focus = 10.0;
+    let aperture = 0.1;
 
     let cam = Camera::new(
         lookfrom,
@@ -149,7 +160,7 @@ fn main() {
                 let v = calc(j, image_height);
                 let u = calc(i, image_width);
                 let r = cam.get_ray(u, v);
-                pixel_color += ray_color(&r, &mut world, max_depth, diff);
+                pixel_color += ray_color(&r, &mut world, max_depth);
             }
 
             data.push(pixel_color);
