@@ -11,3 +11,7 @@ members = ["ray-tracing"]
 [dependencies]
 progressing = "3.0.2"
 ray-tracing = { path = "ray-tracing" }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

@@ -4,8 +4,7 @@ use std::{
 };
 
 use rand::{
-    distributions::{uniform::SampleUniform, Standard},
-    prelude::Distribution,
+    distributions::uniform::{SampleRange, SampleUniform},
     Rng,
 };
 
@@ -44,32 +43,20 @@ where
         N
     }
 }
-impl<T, const N: usize> CVec<T, N>
-where
-    T: num_traits::Zero + Default + Copy,
-    Standard: Distribution<T>,
-{
-    pub fn random() -> Self {
-        let mut data = [T::zero(); N];
-
-        for entry in data.as_mut() {
-            *entry = rand::random();
-        }
-
-        data.into()
-    }
-}
 
 impl<T, const N: usize> CVec<T, N>
 where
     T: num_traits::NumRef + Neg<Output = T> + PartialOrd + SampleUniform + Default + Copy,
 {
-    pub fn random_range(min: T, max: T) -> Self {
+    pub fn random_range<R>(range: R) -> Self
+    where
+        R: SampleRange<T> + Clone,
+    {
         let mut rng = rand::thread_rng();
         let mut data = [T::one(); N];
 
         for entry in data.as_mut() {
-            *entry = rng.gen_range(min..max);
+            *entry = rng.gen_range(range.clone());
         }
 
         Self { data }
@@ -77,7 +64,7 @@ where
 
     pub fn random_in_unit_sphere() -> Self {
         loop {
-            let p = Self::random_range(-T::one(), T::one());
+            let p = Self::random_range(-T::one()..T::one());
 
             if p.length_squared() < T::one() {
                 return p;
@@ -400,7 +387,7 @@ where
 {
     pub fn random_in_unit_disk() -> Self {
         loop {
-            let mut p = Self::random_range(-T::one(), T::one());
+            let mut p = Self::random_range(-T::one()..T::one());
             p.data[2] = T::zero();
 
             if p.length_squared() < T::one() {
