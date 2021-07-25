@@ -4,7 +4,6 @@ use progressing::{
     Baring,
 };
 use std::{
-    cell::RefCell,
     io::{self, Write},
     rc::Rc,
 };
@@ -25,7 +24,7 @@ fn random_scene() -> HittableList {
     let mut world = HittableList::new();
     let mut adder_o = |(x, y, z), r, m| {
         let sphere = Sphere::new(Point::new(x, y, z), r, m);
-        world.add(Rc::new(RefCell::new(sphere)));
+        world.add(Rc::new(sphere));
     };
 
     let mut adder = |p: Point, r, m| {
@@ -33,9 +32,9 @@ fn random_scene() -> HittableList {
         adder_o((data[0], data[1], data[2]), r, m)
     };
 
-    let make_lam_o = |(x, y, z)| Rc::new(RefCell::new(Lambartian::new(Color::new(x, y, z))));
-    let make_met_o = |(x, y, z), f| Rc::new(RefCell::new(Metal::new(Color::new(x, y, z), f)));
-    let make_diel_o = |x| Rc::new(RefCell::new(Dielectric::new(x)));
+    let make_lam_o = |(x, y, z)| Rc::new(Lambartian::new(Color::new(x, y, z)));
+    let make_met_o = |(x, y, z), f| Rc::new(Metal::new(Color::new(x, y, z), f));
+    let make_diel_o = |x| Rc::new(Dielectric::new(x));
 
     let ground_material = make_lam_o((0.5, 0.5, 0.5));
     adder(Point::new(0.0, -1000.0, 0.0), 1000.0, ground_material);
@@ -60,7 +59,7 @@ fn random_scene() -> HittableList {
             let center = Point::new(calc(a), 0.2, calc(b));
 
             if (center - Point::new(4.0, 0.2, 0.0)).length() > 0.9 {
-                let sphere_material: Rc<RefCell<dyn Material>>;
+                let sphere_material: Rc<dyn Material>;
 
                 sphere_material = if choose_mat < 0.5 {
                     let albedo = Color::random_range(0.2..1.0) * Color::random_range(0.2..1.0);
@@ -77,7 +76,7 @@ fn random_scene() -> HittableList {
             }
         }
     }
-    let a: &[((f64, f64, f64), Rc<RefCell<dyn Material>>)] = &[
+    let a: &[((f64, f64, f64), Rc<dyn Material>)] = &[
         ((0.0, 1.0, 0.0), make_diel(1.5)),
         ((-4.0, 1.0, 0.0), make_lam_o((0.4, 0.2, 0.1))),
         ((4.0, 1.0, 0.0), make_met_o((0.7, 0.6, 0.5), 0.0)),
@@ -91,7 +90,7 @@ fn random_scene() -> HittableList {
     world
 }
 
-fn ray_color<H: Hittable>(r: &Ray, world: &mut H, depth: usize) -> Color {
+fn ray_color<H: Hittable>(r: &Ray, world: &H, depth: usize) -> Color {
     if depth == 0 {
         return Color::new(0.0, 0.0, 0.0);
     }
@@ -102,10 +101,7 @@ fn ray_color<H: Hittable>(r: &Ray, world: &mut H, depth: usize) -> Color {
         let mut attenuation = Color::new(0.0, 0.0, 0.0);
 
         if let Some(ref mat) = rec.mat {
-            if mat
-                .borrow()
-                .scatter(r, &rec, &mut attenuation, &mut scattered)
-            {
+            if mat.scatter(r, &rec, &mut attenuation, &mut scattered) {
                 return attenuation * ray_color(&scattered, world, depth - 1);
             }
 
@@ -122,15 +118,15 @@ fn main() {
     let path = "main";
 
     let aspect_ratio = 3.0 / 2.0;
-    let image_width: usize = 1200;
+    let image_width: usize = 600;
     let image_height = (image_width as f64 / aspect_ratio) as usize;
-    let samples_per_pixel = 500;
+    let samples_per_pixel = 50;
     let max_depth = 50;
     let gamma = 2.0;
 
     // World
 
-    let mut world = random_scene();
+    let world = random_scene();
 
     // Camera
     let lookfrom = Point::new(13.0, 2.0, 3.0);
@@ -174,7 +170,7 @@ fn main() {
                 let v = calc(j, image_height);
                 let u = calc(i, image_width);
                 let r = cam.get_ray(u, v);
-                pixel_color += ray_color(&r, &mut world, max_depth);
+                pixel_color += ray_color(&r, &world, max_depth);
             }
 
             data.push(pixel_color);

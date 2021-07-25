@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{rc::Rc};
 
 use crate::{
     cvec::dot,
@@ -10,11 +10,11 @@ use crate::{
 pub struct Sphere {
     pub center: Point,
     pub radius: f64,
-    pub mat: Rc<RefCell<dyn Material>>,
+    pub mat: Rc<dyn Material>,
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f64, mat: Rc<RefCell<dyn Material>>) -> Self {
+    pub fn new(center: Point, radius: f64, mat: Rc<dyn Material>) -> Self {
         Self {
             center,
             radius,
@@ -24,13 +24,14 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&mut self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool {
         let oc = r.origin() - self.center;
         let a = r.direction().length_squared();
         let half_b = dot(oc, r.direction());
         let c = oc.length_squared() - self.radius * self.radius;
 
         let discriminant = half_b * half_b - a * c;
+
         if discriminant < 0.0 {
             return false;
         }

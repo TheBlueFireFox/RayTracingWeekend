@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{rc::Rc};
 
 use crate::{
     cvec::dot,
@@ -10,7 +10,7 @@ use crate::{
 pub struct HitRecord {
     pub p: Point,
     pub normal: Vec3,
-    pub mat: Option<Rc<RefCell<dyn Material>>>,
+    pub mat: Option<Rc<dyn Material>>,
     pub t: f64,
     pub front_face: bool,
 }
@@ -27,13 +27,14 @@ impl HitRecord {
 }
 
 pub trait Hittable {
-    fn hit(&mut self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
 }
 
-pub type HittableObject = Rc<RefCell<dyn Hittable>>;
+pub type HittableObject = Rc<dyn Hittable>;
 
+#[derive(Clone)]
 pub struct HittableList {
-    objects: Vec<HittableObject>,
+    objects: Vec<HittableObject>
 }
 
 impl HittableList {
@@ -58,13 +59,12 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&mut self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool {
         let mut temp_rec = Default::default();
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
         for obj in &self.objects {
             if obj
-                .borrow_mut()
                 .hit(r, t_min, closest_so_far, &mut temp_rec)
             {
                 hit_anything = true;
