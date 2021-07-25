@@ -1,12 +1,19 @@
-use progressing::{
-    mapping::Bar as MappingBar,
-    // The underlying Trait
-    Baring,
-};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::{io::{self, Write}, sync::Arc};
+use indicatif::{ParallelProgressIterator,ProgressBar, ProgressStyle};
+use std::sync::Arc;
 
-use ray_tracing::{camera::Camera, hittable::{Hittable, HittableList}, material::{Dielectric, Lambartian, Material, Metal}, rand_range, ray::{Point, Ray, Vec3}, render::Color, render::Image, render::ppm, sphere::{Mat, Sphere}};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+
+use ray_tracing::{
+    camera::Camera,
+    hittable::{Hittable, HittableList},
+    material::{Dielectric, Lambartian, Material, Metal},
+    rand_range,
+    ray::{Point, Ray, Vec3},
+    render::ppm,
+    render::Color,
+    render::Image,
+    sphere::{Mat, Sphere},
+};
 
 fn random_scene() -> HittableList {
     let mut world = HittableList::new();
@@ -134,57 +141,57 @@ fn main() {
         focus_dist,
     );
 
-    // progress bar
-    let mut bar = MappingBar::with_range(0, image_height).timed();
-    bar.set_len(20);
-    bar.set(0usize);
+    // ProgressBar
+    let pb = ProgressBar::new(image_height as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+        .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} ~{eta}")
+    );
 
     // Render
-    let mut data = Vec::with_capacity(image_height * image_width);
 
     println!("Running");
 
-    let calc = |o, l| ((o as f64) + ray_tracing::random::<f64>()) / (l - 1) as f64;
+    let calc = |o, l| ((o as f64) + ray_tracing::rand_range(0.0..1.0)) / (l - 1) as f64;
 
-    let mut print_bar = |v: usize| {
-        bar.set(image_height - v);
-        print!("\r{} ", bar);
-        let _ = io::stdout().flush();
-    };
+    // let mut data = Vec::with_capacity(image_height * image_width);
+    let outer: Vec<_> = (0..image_height).rev().collect();
 
-    print_bar(image_height);
+    let data: Vec<_> = outer
+        .par_iter()
+        .progress_with(pb)
+        .map(|&j| {
+            let mut idata = Vec::with_capacity(image_width);
 
-    for j in (0..image_height).rev() {
-        let mut idata : Vec<_> = (0..image_width).into_par_iter().map(
-            |i| {
-            let mut pixel_color = Color::new(0.0, 0.0, 0.0);
+            for i in 0..image_width {
+                let mut pixel_color = Color::new(0.0, 0.0, 0.0);
 
-            for _ in 0..samples_per_pixel {
-                let v = calc(j, image_height);
-                let u = calc(i, image_width);
-                let r = cam.get_ray(u, v);
-                pixel_color += ray_color(&r, &world, max_depth);
+                for _ in 0..samples_per_pixel {
+                    let v = calc(j, image_height);
+                    let u = calc(i, image_width);
+                    let r = cam.get_ray(u, v);
+                    pixel_color += ray_color(&r, &world, max_depth);
+                }
+                idata.push(pixel_color);
             }
-            pixel_color
-            }
-        ).collect();
 
-        data.append(&mut idata);
+            idata
+        })
+        .flatten()
+        .collect();
 
-       // for i in 0..image_width {
-       //     let mut pixel_color = Color::new(0.0, 0.0, 0.0);
+    // for i in 0..image_width {
+    //     let mut pixel_color = Color::new(0.0, 0.0, 0.0);
 
-       //     for _ in 0..samples_per_pixel {
-       //         let v = calc(j, image_height);
-       //         let u = calc(i, image_width);
-       //         let r = cam.get_ray(u, v);
-       //         pixel_color += ray_color(&r, &world, max_depth);
-       //     }
+    //     for _ in 0..samples_per_pixel {
+    //         let v = calc(j, image_height);
+    //         let u = calc(i, image_width);
+    //         let r = cam.get_ray(u, v);
+    //         pixel_color += ray_color(&r, &world, max_depth);
+    //     }
 
-       //     data.push(pixel_color);
-       // }
-        print_bar(j);
-    }
+    //     data.push(pixel_color);
+    // }
 
     println!();
     println!("Writing to file");

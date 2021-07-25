@@ -19,9 +19,6 @@ pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
     }
 }
 
-// Reexporting from random (because reasons)
-pub use rand::random;
-
 pub fn rand_range<T, R>(range: R) -> T
 where
     T: SampleUniform,
