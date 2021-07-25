@@ -1,4 +1,4 @@
-use std::{rc::Rc};
+use std::{sync::Arc};
 
 use crate::{
     cvec::dot,
@@ -7,14 +7,16 @@ use crate::{
     ray::{Point, Ray},
 };
 
+pub type Mat = Arc<dyn Material + Send + Sync + 'static>;
+
 pub struct Sphere {
     pub center: Point,
     pub radius: f64,
-    pub mat: Rc<dyn Material>,
+    pub mat: Mat,
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f64, mat: Rc<dyn Material>) -> Self {
+    pub fn new(center: Point, radius: f64, mat: Mat) -> Self {
         Self {
             center,
             radius,

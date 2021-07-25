@@ -9,9 +9,11 @@ edition = "2018"
 members = ["ray-tracing"]
 
 [dependencies]
+rayon = "1.5"
 progressing = "3.0.2"
 ray-tracing = { path = "ray-tracing" }
 
 [profile.release]
+debug = true
 lto = "fat"
 codegen-units = 1

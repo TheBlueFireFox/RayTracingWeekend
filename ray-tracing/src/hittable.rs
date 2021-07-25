@@ -1,4 +1,4 @@
-use std::{rc::Rc};
+use std::{sync::Arc};
 
 use crate::{
     cvec::dot,
@@ -10,7 +10,7 @@ use crate::{
 pub struct HitRecord {
     pub p: Point,
     pub normal: Vec3,
-    pub mat: Option<Rc<dyn Material>>,
+    pub mat: Option<Arc<dyn Material>>,
     pub t: f64,
     pub front_face: bool,
 }
@@ -30,7 +30,7 @@ pub trait Hittable {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
 }
 
-pub type HittableObject = Rc<dyn Hittable>;
+pub type HittableObject = Arc<dyn Hittable + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct HittableList {
