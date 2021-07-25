@@ -1,4 +1,4 @@
-use num_traits::Pow;
+use std::sync::Arc;
 
 use crate::{
     cvec::{self, dot, reflect, refract},
@@ -8,7 +8,9 @@ use crate::{
     rtweekend,
 };
 
-pub trait Material {
+pub type Mat = Arc<dyn Material>;
+
+pub trait Material: Send + Sync {
     fn scatter(
         &self,
         r_in: &Ray,
@@ -85,8 +87,8 @@ impl Dielectric {
     fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
         // Use Schlick's approximation for reflextance.
         let mut r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
-        r0 = r0.pow(2.0);
-        r0 + (1.0 - r0) * ((1.0 - cosine).pow(5.0))
+        r0 = r0.powf(2.0);
+        r0 + (1.0 - r0) * ((1.0 - cosine).powf(5.0))
     }
 }
 

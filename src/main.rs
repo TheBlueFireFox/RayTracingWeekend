@@ -1,22 +1,31 @@
-use indicatif::{ParallelProgressIterator,ProgressBar, ProgressStyle};
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use std::sync::Arc;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use ray_tracing::{
     camera::Camera,
+    clamp,
     hittable::{Hittable, HittableList},
-    material::{Dielectric, Lambartian, Material, Metal},
+    material::{Dielectric, Lambartian, Mat, Material, Metal},
     rand_range,
     ray::{Point, Ray, Vec3},
     render::ppm,
     render::Color,
     render::Image,
-    sphere::{Mat, Sphere},
+    sphere::Sphere,
 };
 
+const ASPECT_RATIO: f64 = 3.0 / 2.0;
+const IMAGE_WIDTH: usize = 1200;
+const IMAGE_HEIGHT: usize = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as usize;
+const SAMPLES_PER_PIXEL: usize = 500;
+const MAX_DEPTH: usize = 50;
+const GAMMA: f64 = 2.0;
+
 fn random_scene() -> HittableList {
-    let mut world = HittableList::new();
+    let mut world = HittableList::with_capacity(11 * 2 * 2);
+
     let mut adder_o = |(x, y, z), r, m| {
         let sphere = Sphere::new(Point::new(x, y, z), r, m);
         world.add(Arc::new(sphere));
@@ -71,7 +80,7 @@ fn random_scene() -> HittableList {
             }
         }
     }
-    let a: &[((f64, f64, f64), Arc<dyn Material + Send + Sync>)] = &[
+    let a: &[((f64, f64, f64), Arc<dyn Material>)] = &[
         ((0.0, 1.0, 0.0), make_diel(1.5)),
         ((-4.0, 1.0, 0.0), make_lam_o((0.4, 0.2, 0.1))),
         ((4.0, 1.0, 0.0), make_met_o((0.7, 0.6, 0.5), 0.0)),
@@ -91,6 +100,7 @@ fn ray_color<H: Hittable>(r: &Ray, world: &H, depth: usize) -> Color {
     }
 
     let mut rec = Default::default();
+
     if world.hit(r, 0.001, f64::INFINITY, &mut rec) {
         let mut scattered = Ray::new(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 0.0));
         let mut attenuation = Color::new(0.0, 0.0, 0.0);
@@ -108,21 +118,7 @@ fn ray_color<H: Hittable>(r: &Ray, world: &H, depth: usize) -> Color {
     (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
 }
 
-fn main() {
-    // Image
-    let path = "main";
-
-    let aspect_ratio = 3.0 / 2.0;
-    let image_width: usize = 600;
-    let image_height = (image_width as f64 / aspect_ratio) as usize;
-    let samples_per_pixel = 50;
-    let max_depth = 50;
-    let gamma = 2.0;
-
-    // World
-
-    let world = random_scene();
-
+fn run<H: Hittable>(world: &H, pb: ProgressBar) -> Vec<Color> {
     // Camera
     let lookfrom = Point::new(13.0, 2.0, 3.0);
     let lookat = Point::new(0.0, 0.0, 0.0);
@@ -136,16 +132,9 @@ fn main() {
         lookat,
         vup,
         vfov,
-        aspect_ratio,
+        ASPECT_RATIO,
         aperture,
         focus_dist,
-    );
-
-    // ProgressBar
-    let pb = ProgressBar::new(image_height as u64);
-    pb.set_style(
-        ProgressStyle::default_bar()
-        .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} ~{eta}")
     );
 
     // Render
@@ -154,49 +143,74 @@ fn main() {
 
     let calc = |o, l| ((o as f64) + ray_tracing::rand_range(0.0..1.0)) / (l - 1) as f64;
 
+    // Divide the color by the number of samples
+    let fix_scale = 1.0 / (SAMPLES_PER_PIXEL as f64);
+
+    // gamma and clamping the values
+    let fix_pixel_val = |v: f64| {
+        let v = (fix_scale * v).powf(1.0 / GAMMA);
+        let c = clamp(v, 0.0, 0.999);
+        256.0 * c
+    };
+
+    let fix_pixel = |p: Color| {
+        let r = fix_pixel_val(p.x());
+        let g = fix_pixel_val(p.y());
+        let b = fix_pixel_val(p.z());
+
+        Color::new(r, g, b)
+    };
+
     // let mut data = Vec::with_capacity(image_height * image_width);
-    let outer: Vec<_> = (0..image_height).rev().collect();
+    let outer: Vec<_> = (0..IMAGE_HEIGHT).rev().collect();
 
     let data: Vec<_> = outer
         .par_iter()
         .progress_with(pb)
         .map(|&j| {
-            let mut idata = Vec::with_capacity(image_width);
+            let mut idata = Vec::with_capacity(IMAGE_WIDTH);
 
-            for i in 0..image_width {
+            for i in 0..IMAGE_WIDTH {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
 
-                for _ in 0..samples_per_pixel {
-                    let v = calc(j, image_height);
-                    let u = calc(i, image_width);
+                for _ in 0..SAMPLES_PER_PIXEL {
+                    let v = calc(j, IMAGE_HEIGHT);
+                    let u = calc(i, IMAGE_WIDTH);
                     let r = cam.get_ray(u, v);
-                    pixel_color += ray_color(&r, &world, max_depth);
+                    pixel_color += ray_color(&r, world, MAX_DEPTH);
                 }
-                idata.push(pixel_color);
+
+                idata.push(fix_pixel(pixel_color));
             }
 
             idata
         })
         .flatten()
         .collect();
+    data
+}
 
-    // for i in 0..image_width {
-    //     let mut pixel_color = Color::new(0.0, 0.0, 0.0);
+fn main() {
+    // Image
+    let path = "main";
 
-    //     for _ in 0..samples_per_pixel {
-    //         let v = calc(j, image_height);
-    //         let u = calc(i, image_width);
-    //         let r = cam.get_ray(u, v);
-    //         pixel_color += ray_color(&r, &world, max_depth);
-    //     }
+    // ProgressBar
+    let pb = ProgressBar::new(IMAGE_HEIGHT as u64);
+    pb.set_style(ProgressStyle::default_bar().template(
+        "{spinner} [{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {percent}% ~{eta}",
+    ));
+    pb.set_draw_rate(15);
 
-    //     data.push(pixel_color);
-    // }
+    // World
+    let world = random_scene();
+    let data = run(&world, pb.clone());
+
+    pb.finish();
 
     println!();
     println!("Writing to file");
 
-    let img = Image::new(&data, image_height, image_width, samples_per_pixel, gamma);
+    let img = Image::new(&data, IMAGE_HEIGHT, IMAGE_WIDTH);
 
     ppm::save(img, path).expect("Something went terribly wrong here");
 

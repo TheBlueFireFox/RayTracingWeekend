@@ -1,6 +1,4 @@
-use num_traits::Pow;
-
-use crate::{render::Render, rtweekend::clamp};
+use crate::render::Render;
 use std::{fmt::Write, fs, io, path::Path};
 
 pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), io::Error> {
@@ -23,17 +21,10 @@ pub fn save<'a, T: Render<'a>, P: AsRef<Path>>(image: T, path: P) -> Result<(), 
     // no error possible as per docs
     write!(s, "P3\n{} {}\n255\n", img.get_width(), img.get_height()).unwrap();
 
-    let scale = 1.0 / (img.sample() as f64);
-    let calc = |v: f64| {
-        let v = (scale * v).pow(1.0 / img.gamma());
-        let c = clamp(v, 0.0, 0.999);
-        (256.0 * c) as u8
-    };
-
     for p in img.get_pixels() {
-        let r = calc(p.x());
-        let g = calc(p.y());
-        let b = calc(p.z());
+        let r = p.x() as u8;
+        let g = p.y() as u8;
+        let b = p.z() as u8;
 
         // no error possible as per docs
         let _ = write!(s, "{} {} {}\n", r, g, b);
@@ -78,17 +69,17 @@ mod tests {
 
         for j in 0..IMAGE_HEIGHT {
             for i in 0..IMAGE_WIDTH {
-                let r = per(i, IMAGE_WIDTH);
-                let g = per(255 - j, IMAGE_HEIGHT);
-                let b = 0.25;
+                let r = con(per(i, IMAGE_WIDTH));
+                let g = con(per(255 - j, IMAGE_HEIGHT));
+                let b = con(0.25);
 
-                px[j * IMAGE_HEIGHT + i] = Color::new(r, g, b);
+                px[j * IMAGE_HEIGHT + i] = Color::new(r as f64, g as f64, b as f64);
 
-                res.push_str(&format!("{} {} {}\n", con(r), con(g), con(b)));
+                res.push_str(&format!("{} {} {}\n", r,g,b));
             }
         }
 
-        let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH, 1, 1.0);
+        let img = Image::new(&px, IMAGE_HEIGHT, IMAGE_WIDTH);
 
         let tmp_file1 = tempfile::Builder::new().suffix(".ppm").tempfile()?;
         let mut tmp_file2 = tmp_file1.reopen()?;

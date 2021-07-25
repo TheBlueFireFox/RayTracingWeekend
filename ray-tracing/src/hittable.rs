@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     cvec::dot,
@@ -17,30 +17,36 @@ pub struct HitRecord {
 
 impl HitRecord {
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3) {
-        self.front_face = dot(r.direction(), *outward_normal) < 0.0;
+        let outward_normal = *outward_normal;
+        self.front_face = dot(r.direction(), outward_normal) < 0.0;
         self.normal = if self.front_face {
-            *outward_normal
+            outward_normal
         } else {
-            *outward_normal * -1.0
+            -outward_normal
         }
     }
 }
 
-pub trait Hittable {
+pub trait Hittable : Send + Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
 }
 
-pub type HittableObject = Arc<dyn Hittable + Send + Sync + 'static>;
+pub type HittableObject = Arc<dyn Hittable>;
 
-#[derive(Clone)]
 pub struct HittableList {
-    objects: Vec<HittableObject>
+    objects: Vec<HittableObject>,
 }
 
 impl HittableList {
     pub fn new() -> Self {
         Self {
             objects: Vec::new(),
+        }
+    }
+
+    pub fn with_capacity(cap: usize) -> Self {
+        Self {
+            objects: Vec::with_capacity(cap)
         }
     }
 
@@ -64,9 +70,7 @@ impl Hittable for HittableList {
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
         for obj in &self.objects {
-            if obj
-                .hit(r, t_min, closest_so_far, &mut temp_rec)
-            {
+            if obj.hit(r, t_min, closest_so_far, &mut temp_rec) {
                 hit_anything = true;
                 closest_so_far = temp_rec.t.clone();
                 *rec = temp_rec.clone();

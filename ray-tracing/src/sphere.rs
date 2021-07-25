@@ -1,13 +1,9 @@
-use std::{sync::Arc};
-
 use crate::{
     cvec::dot,
     hittable::{HitRecord, Hittable},
-    material::Material,
+    material::Mat,
     ray::{Point, Ray},
 };
-
-pub type Mat = Arc<dyn Material + Send + Sync + 'static>;
 
 pub struct Sphere {
     pub center: Point,
