@@ -75,7 +75,7 @@ mod tests {
 
                 px[j * IMAGE_HEIGHT + i] = Color::new(r as f64, g as f64, b as f64);
 
-                res.push_str(&format!("{} {} {}\n", r,g,b));
+                res.push_str(&format!("{} {} {}\n", r, g, b));
             }
         }
 

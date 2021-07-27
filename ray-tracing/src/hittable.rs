@@ -27,7 +27,7 @@ impl HitRecord {
     }
 }
 
-pub trait Hittable : Send + Sync {
+pub trait Hittable: Send + Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
 }
 
@@ -46,7 +46,7 @@ impl HittableList {
 
     pub fn with_capacity(cap: usize) -> Self {
         Self {
-            objects: Vec::with_capacity(cap)
+            objects: Vec::with_capacity(cap),
         }
     }
 

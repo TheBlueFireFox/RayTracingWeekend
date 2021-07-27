@@ -195,8 +195,8 @@ pub fn run(pb_run: ProgressBar, pb_int: ProgressBar) -> Vec<Color> {
     // World
     let world = random_scene();
 
-    // run 
-    let mut tmp : Vec<_> = (0..REPETITION)
+    // run
+    let mut tmp: Vec<_> = (0..REPETITION)
         .map(|_| Some(irun(&world, pb_int.clone())))
         .progress_with(pb_run)
         .collect();
