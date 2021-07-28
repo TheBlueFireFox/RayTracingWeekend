@@ -15,8 +15,8 @@ use ray_tracing::{
 };
 
 pub const REPETITION: usize = 4;
-pub const ASPECT_RATIO: f64 = 3.0 / 2.0;
-pub const IMAGE_WIDTH: usize = 1200;
+pub const ASPECT_RATIO: f64 = 16.0 / 9.0;
+pub const IMAGE_WIDTH: usize = 1920;
 pub const IMAGE_HEIGHT: usize = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as usize;
 pub const SAMPLES_PER_PIXEL: usize = 500;
 pub const MAX_DEPTH: usize = 50;
@@ -79,9 +79,10 @@ fn random_scene() -> HittableList {
             }
         }
     }
+    
     let a: &[((f64, f64, f64), Arc<dyn Material>)] = &[
         ((0.0, 1.0, 0.0), make_diel(1.5)),
-        ((-4.0, 1.0, 0.0), make_lam_o((0.4, 0.2, 0.1))),
+        ((-4.0, 1.0, 0.0), make_lam_o((130.0/256.0, 22.0/256.0, 22.0/256.0))),
         ((4.0, 1.0, 0.0), make_met_o((0.7, 0.6, 0.5), 0.0)),
     ];
 
@@ -160,15 +161,12 @@ fn irun<H: Hittable>(world: &H, pb: ProgressBar) -> Vec<Color> {
         Color::new(r, g, b)
     };
 
-    // let mut data = Vec::with_capacity(image_height * image_width);
     let outer: Vec<_> = (0..IMAGE_HEIGHT).rev().collect();
 
     let data: Vec<_> = outer
         .par_iter()
         .map(|&j| {
-            let mut idata = Vec::with_capacity(IMAGE_WIDTH);
-
-            for i in 0..IMAGE_WIDTH {
+            (0..IMAGE_WIDTH).map(|i| {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
 
                 for _ in 0..SAMPLES_PER_PIXEL {
@@ -178,10 +176,8 @@ fn irun<H: Hittable>(world: &H, pb: ProgressBar) -> Vec<Color> {
                     pixel_color += ray_color(&r, world, MAX_DEPTH);
                 }
 
-                idata.push(fix_pixel(pixel_color));
-            }
-
-            idata
+                fix_pixel(pixel_color)
+            }).collect::<Vec<_>>()
         })
         .progress_with(pb)
         .flatten()
@@ -202,6 +198,8 @@ pub fn run(pb_run: ProgressBar, pb_int: ProgressBar) -> Vec<Color> {
         .collect();
 
     // prepare the solution
+    // SAFETY: all the unwraps are safe here,
+    // as above all the results get to be combined.
     let mut res = tmp[0].take().unwrap();
 
     for arr in tmp.iter().skip(1) {

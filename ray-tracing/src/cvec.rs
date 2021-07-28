@@ -3,10 +3,7 @@ use std::{
     usize,
 };
 
-use rand::{
-    distributions::uniform::{SampleRange, SampleUniform},
-    Rng,
-};
+use rand::distributions::uniform::{SampleRange, SampleUniform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CVec<T, const N: usize>
@@ -52,11 +49,10 @@ where
     where
         R: SampleRange<T> + Clone,
     {
-        let mut rng = rand::thread_rng();
         let mut data = [T::one(); N];
 
         for entry in data.as_mut() {
-            *entry = rng.gen_range(range.clone());
+            *entry = crate::rtweekend::rand_range(range.clone());
         }
 
         Self { data }
@@ -410,6 +406,7 @@ where
     }
 }
 
+#[inline]
 pub fn cross<T>(l: &Vec3<T>, r: &Vec3<T>) -> Vec3<T>
 where
     T: num_traits::NumAssignRef + Default + Copy,

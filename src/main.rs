@@ -9,13 +9,12 @@ use std::{
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use ray_tracing::render::{ppm, Color, Image};
-use setup::REPETITION;
-
-use crate::setup::{IMAGE_HEIGHT, IMAGE_WIDTH};
+use setup::{IMAGE_HEIGHT, IMAGE_WIDTH, REPETITION};
 
 mod setup;
 
-fn do_calculations() -> thread::Result<Vec<Color>> {
+fn create_image() -> thread::Result<Vec<Color>> {
+
     // ProgressBar
     let mp = MultiProgress::new();
 
@@ -25,16 +24,15 @@ fn do_calculations() -> thread::Result<Vec<Color>> {
         "{spinner} [{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {percent}% ~{eta}",
     );
 
-    let set = |pb: &ProgressBar| {
+    let setup = |size| {
+        let pb = mp.add(ProgressBar::new(size as u64));
         pb.set_style(sty.clone());
         pb.set_draw_rate(DRAW_RATE);
+        pb
     };
 
-    let pb_run = mp.add(ProgressBar::new(REPETITION as u64));
-    set(&pb_run);
-
-    let pb_curr = mp.add(ProgressBar::new(IMAGE_HEIGHT as u64));
-    set(&pb_curr);
+    let pb_run = setup(REPETITION);
+    let pb_curr = setup(IMAGE_HEIGHT);
 
     let pb_run1 = pb_run.clone();
     let pb_curr1 = pb_curr.clone();
@@ -54,15 +52,16 @@ fn do_calculations() -> thread::Result<Vec<Color>> {
 
     let data = thread::spawn(move || {
         let res = setup::run(pb_run.clone(), pb_curr.clone());
-        pb_curr.finish();
-        pb_run.finish();
+        for pb in [pb_curr, pb_run] {
+            pb.finish();
+        }
+
+        ab.store(false, Ordering::Release);
+
         res
     });
 
     mp.join().map_err(|err| Box::new(err) as _)?;
-
-    ab.store(false, Ordering::Release);
-
     ticker.join()?;
 
     data.join()
@@ -74,7 +73,7 @@ fn main() {
 
     println!("Running");
 
-    let data = do_calculations().expect("unable to get the data, due to some error");
+    let data = create_image().expect("unable to get the data, due to some error");
 
     println!("Writing data");
     let img = Image::new(&data, IMAGE_HEIGHT, IMAGE_WIDTH);
